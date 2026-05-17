@@ -1156,3 +1156,15 @@ footer { animation: fadeUp 0.5s ease 0.65s both; }
   opacity: 0.6;
   flex-shrink: 0;
 }
+
+
+/* ===== Layout system (Task 1.4 scaffold) ===== */
+#layout-root.layout-mode-toggle .pane[hidden] { display: none; }
+#layout-root.layout-mode-toggle .pane:not([hidden]) { display: block; }
+
+.placeholder {
+  padding: 60px 20px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 14px;
+}
