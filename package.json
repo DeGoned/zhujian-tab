@@ -1,0 +1,15 @@
+{
+  "name": "tab-out-todo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Tab Out + Todo Chrome extension (dev-only npm; extension itself has zero runtime deps)",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "vitest": "^1.6.0",
+    "jsdom": "^24.0.0",
+    "jest-chrome": "^0.8.0"
+  }
+}
