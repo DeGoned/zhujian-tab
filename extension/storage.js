@@ -15,6 +15,12 @@ const _listeners = new Map() // key -> Set<callback>
 export function onStorageChanged(key, callback) {
   if (!_listeners.has(key)) _listeners.set(key, new Set())
   _listeners.get(key).add(callback)
+  return () => offStorageChanged(key, callback)
+}
+
+export function offStorageChanged(key, callback) {
+  const set = _listeners.get(key)
+  if (set) set.delete(callback)
 }
 
 chrome.storage.onChanged.addListener((changes, area) => {
