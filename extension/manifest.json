@@ -1,13 +1,13 @@
 {
   "manifest_version": 3,
-  "name": "Tab Out",
-  "version": "1.0.0",
-  "description": "Keep tabs on your tabs. New tab page that groups your open tabs by domain and lets you close them with style.",
+  "name": "Tab Out + Todo",
+  "version": "0.1.0",
+  "description": "Tab Out 基础上扩展待办管理：深度绑定 tab、今日/项目双 view、全局快捷键捕获。",
   "permissions": ["tabs", "activeTab", "storage"],
   "chrome_url_overrides": { "newtab": "index.html" },
   "background": { "service_worker": "background.js" },
   "action": {
-    "default_title": "Tab Out",
+    "default_title": "Tab Out + Todo",
     "default_icon": {
       "16": "icons/icon16.png",
       "48": "icons/icon48.png"
