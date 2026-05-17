@@ -1,0 +1,15 @@
+# Brainstorming session content (per superpowers convention)
+.superpowers/
+
+# Upstream tab-out source (separate git repo, will be forked or extracted in implementation phase)
+tab-out/
+
+# macOS
+.DS_Store
+
+# Node (in case future tooling)
+node_modules/
+
+# IDE
+.vscode/
+.idea/
