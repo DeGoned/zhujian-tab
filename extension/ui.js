@@ -4,7 +4,16 @@
 
 // === Sound control ===
 let _soundEnabled = true
-export function setSoundEnabled(v) { _soundEnabled = v }
+
+/**
+ * @param {boolean} enabled
+ * @returns {void}
+ */
+export function setSoundEnabled(enabled) { _soundEnabled = Boolean(enabled) }
+
+/**
+ * @returns {boolean}
+ */
 export function getSoundEnabled() { return _soundEnabled }
 
 /**
@@ -13,6 +22,8 @@ export function getSoundEnabled() { return _soundEnabled }
  * Plays a clean "swoosh" sound when tabs are closed.
  * Built entirely with the Web Audio API — no sound files needed.
  * A filtered noise sweep that descends in pitch, like air moving.
+ *
+ * @returns {void}
  */
 export function playCloseSound() {
   if (!_soundEnabled) return;
@@ -66,6 +77,10 @@ export { playCloseSound as playSwoosh }
  * Shoots a burst of colorful confetti particles from the given screen
  * coordinates (typically the center of a card being closed).
  * Pure CSS + JS, no libraries.
+ *
+ * @param {number} x - Horizontal pixel coordinate
+ * @param {number} y - Vertical pixel coordinate
+ * @returns {void}
  */
 export function shootConfetti(x, y) {
   const colors = [
@@ -141,6 +156,9 @@ export { shootConfetti as burstConfetti }
  * showToast(message)
  *
  * Brief pop-up notification at the bottom of the screen.
+ *
+ * @param {string} message
+ * @returns {void}
  */
 export function showToast(message) {
   const toast = document.getElementById('toast');
