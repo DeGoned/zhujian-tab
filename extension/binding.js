@@ -247,3 +247,112 @@ function escapeAttr(s) {
 function _escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]))
 }
+
+/**
+ * Guarded single-tab close. If the URL is bound to incomplete todos, shows a modal
+ * asking the user how to handle. Otherwise closes immediately.
+ *
+ * @param {number} tabId
+ * @param {string} url
+ * @param {Function} doClose  callback that actually removes the tab
+ * @returns {Promise<boolean>}  true if close happened, false if user cancelled
+ */
+export async function closeTabWithGuard(tabId, url, doClose) {
+  if (!url || !(await urlIsBound(url))) {
+    doClose()
+    return true
+  }
+  const todos = await getTodosBoundToUrl(url)
+  if (todos.length === 0) {
+    doClose()
+    return true
+  }
+  const { showModal, showToast } = await import('./ui.js')
+  const bodyHtml = `
+    <p class="muted" style="margin: 0 0 8px;">即将关闭的 tab 关联了以下未完成 todo：</p>
+    <ul>${todos.map(t => `<li>☐ ${_escapeHtml(t.text)}</li>`).join('')}</ul>
+    <p class="muted" style="margin-top: 12px;">先标完成？还是把绑定移除直接关？</p>
+  `
+  const choice = await showModal({
+    title: '先处理这件事？',
+    bodyHtml,
+    buttons: [
+      { label: `✓ 全部标完成（${todos.length}）`, kind: 'primary', value: 'done' },
+      { label: '关 todo 不管', kind: 'secondary', value: 'ignore' },
+      { label: '取消', kind: 'ghost', value: 'cancel' },
+    ],
+  })
+  if (choice === 'cancel') return false
+  const { completeTodo } = await import('./todos.js')
+  if (choice === 'done') {
+    for (const t of todos) await completeTodo(t.id)
+    showToast(`已标完成 ${todos.length} 个 todo`)
+  } else if (choice === 'ignore') {
+    for (const t of todos) {
+      await updateTodo(t.id, { boundUrls: (t.boundUrls || []).filter(u => u !== url) })
+    }
+    showToast('已解除绑定')
+  }
+  doClose()
+  return true
+}
+
+/**
+ * Guarded close-all for a group of tabs (e.g. all tabs of a domain).
+ * Aggregates all bound-todo info into ONE modal so user isn't spammed.
+ *
+ * @param {Array<{id: number, url: string}>} tabsToClose
+ * @param {Function} doCloseAll  callback that actually removes the tabs
+ * @returns {Promise<boolean>}
+ */
+export async function closeAllTabsWithGuard(tabsToClose, doCloseAll) {
+  const boundTabs = []
+  for (const t of tabsToClose) {
+    if (t.url && await urlIsBound(t.url)) boundTabs.push(t)
+  }
+  if (boundTabs.length === 0) {
+    doCloseAll()
+    return true
+  }
+  // Aggregate todos affected (dedupe by id)
+  const todoMap = new Map()
+  for (const t of boundTabs) {
+    const ts = await getTodosBoundToUrl(t.url)
+    for (const todo of ts) todoMap.set(todo.id, todo)
+  }
+  const todos = [...todoMap.values()]
+  if (todos.length === 0) {
+    doCloseAll()
+    return true
+  }
+  const { showModal, showToast } = await import('./ui.js')
+  const bodyHtml = `
+    <p class="muted" style="margin: 0 0 8px;">这一组里有 <strong>${boundTabs.length}</strong> 个 tab 关联未完成 todo：</p>
+    <ul>${todos.map(t => `<li>☐ ${_escapeHtml(t.text)}</li>`).join('')}</ul>
+  `
+  const choice = await showModal({
+    title: '批量关闭前先处理？',
+    bodyHtml,
+    buttons: [
+      { label: `✓ 全部标完成（${todos.length}）`, kind: 'primary', value: 'done' },
+      { label: '关 todo 不管', kind: 'secondary', value: 'ignore' },
+      { label: '取消', kind: 'ghost', value: 'cancel' },
+    ],
+  })
+  if (choice === 'cancel') return false
+  const { completeTodo } = await import('./todos.js')
+  const urlsToRemove = new Set(boundTabs.map(t => t.url))
+  if (choice === 'done') {
+    for (const t of todos) await completeTodo(t.id)
+    showToast(`已标完成 ${todos.length} 个 todo`)
+  } else if (choice === 'ignore') {
+    for (const t of todos) {
+      await updateTodo(t.id, {
+        boundUrls: (t.boundUrls || []).filter(u => !urlsToRemove.has(u))
+      })
+    }
+    showToast('已解除绑定')
+  }
+  doCloseAll()
+  return true
+}

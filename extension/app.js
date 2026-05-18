@@ -1127,40 +1127,50 @@ document.addEventListener('click', async (e) => {
     const tabUrl = actionEl.dataset.tabUrl;
     if (!tabUrl) return;
 
-    // Close the tab in Chrome directly
-    const allTabs = await chrome.tabs.query({});
-    const match   = allTabs.find(t => t.url === tabUrl);
-    if (match) await chrome.tabs.remove(match.id);
-    await fetchOpenTabs();
-
-    playCloseSound();
-
-    // Animate the chip row out
+    const { closeTabWithGuard } = await import('./binding.js');
+    // Capture the chip reference before any async operation
     const chip = actionEl.closest('.page-chip');
-    if (chip) {
-      const rect = chip.getBoundingClientRect();
-      shootConfetti(rect.left + rect.width / 2, rect.top + rect.height / 2);
-      chip.style.transition = 'opacity 0.2s, transform 0.2s';
-      chip.style.opacity    = '0';
-      chip.style.transform  = 'scale(0.8)';
-      setTimeout(() => {
-        chip.remove();
-        // If the card now has no tabs, remove it too
-        const parentCard = document.querySelector('.mission-card:has(.mission-pages:empty)');
-        if (parentCard) animateCardOut(parentCard);
-        document.querySelectorAll('.mission-card').forEach(c => {
-          if (c.querySelectorAll('.page-chip[data-action="focus-tab"]').length === 0) {
-            animateCardOut(c);
-          }
-        });
-      }, 200);
-    }
 
-    // Update footer
-    const statTabs = document.getElementById('statTabs');
-    if (statTabs) statTabs.textContent = openTabs.length;
+    const doClose = async () => {
+      // Close the tab in Chrome directly
+      const allTabs = await chrome.tabs.query({});
+      const match   = allTabs.find(t => t.url === tabUrl);
+      if (match) await chrome.tabs.remove(match.id);
+      await fetchOpenTabs();
 
-    showToast('Tab closed');
+      playCloseSound();
+
+      // Animate the chip row out
+      if (chip) {
+        const rect = chip.getBoundingClientRect();
+        shootConfetti(rect.left + rect.width / 2, rect.top + rect.height / 2);
+        chip.style.transition = 'opacity 0.2s, transform 0.2s';
+        chip.style.opacity    = '0';
+        chip.style.transform  = 'scale(0.8)';
+        setTimeout(() => {
+          chip.remove();
+          // If the card now has no tabs, remove it too
+          const parentCard = document.querySelector('.mission-card:has(.mission-pages:empty)');
+          if (parentCard) animateCardOut(parentCard);
+          document.querySelectorAll('.mission-card').forEach(c => {
+            if (c.querySelectorAll('.page-chip[data-action="focus-tab"]').length === 0) {
+              animateCardOut(c);
+            }
+          });
+        }, 200);
+      }
+
+      // Update footer
+      const statTabs = document.getElementById('statTabs');
+      if (statTabs) statTabs.textContent = openTabs.length;
+
+      showToast('Tab closed');
+    };
+
+    // Look up the tab id for the guard (guard only needs url; id is for doClose above)
+    const allTabsForGuard = await chrome.tabs.query({});
+    const matchForGuard   = allTabsForGuard.find(t => t.url === tabUrl);
+    await closeTabWithGuard(matchForGuard ? matchForGuard.id : null, tabUrl, doClose);
     return;
   }
 
@@ -1253,26 +1263,32 @@ document.addEventListener('click', async (e) => {
     // must use exact URL matching to avoid closing unrelated tabs
     const useExact  = group.domain === '__landing-pages__' || !!group.label;
 
-    if (useExact) {
-      await closeTabsExact(urls);
-    } else {
-      await closeTabsByUrls(urls);
-    }
+    const { closeAllTabsWithGuard } = await import('./binding.js');
 
-    if (card) {
-      playCloseSound();
-      animateCardOut(card);
-    }
+    const doCloseAll = async () => {
+      if (useExact) {
+        await closeTabsExact(urls);
+      } else {
+        await closeTabsByUrls(urls);
+      }
 
-    // Remove from in-memory groups
-    const idx = domainGroups.indexOf(group);
-    if (idx !== -1) domainGroups.splice(idx, 1);
+      if (card) {
+        playCloseSound();
+        animateCardOut(card);
+      }
 
-    const groupLabel = group.domain === '__landing-pages__' ? 'Homepages' : (group.label || friendlyDomain(group.domain));
-    showToast(`Closed ${urls.length} tab${urls.length !== 1 ? 's' : ''} from ${groupLabel}`);
+      // Remove from in-memory groups
+      const idx = domainGroups.indexOf(group);
+      if (idx !== -1) domainGroups.splice(idx, 1);
 
-    const statTabs = document.getElementById('statTabs');
-    if (statTabs) statTabs.textContent = openTabs.length;
+      const groupLabel = group.domain === '__landing-pages__' ? 'Homepages' : (group.label || friendlyDomain(group.domain));
+      showToast(`Closed ${urls.length} tab${urls.length !== 1 ? 's' : ''} from ${groupLabel}`);
+
+      const statTabs = document.getElementById('statTabs');
+      if (statTabs) statTabs.textContent = openTabs.length;
+    };
+
+    await closeAllTabsWithGuard(group.tabs, doCloseAll);
     return;
   }
 
@@ -1314,21 +1330,28 @@ document.addEventListener('click', async (e) => {
 
   // ---- Close ALL open tabs ----
   if (action === 'close-all-open-tabs') {
-    const allUrls = openTabs
-      .filter(t => t.url && !t.url.startsWith('chrome') && !t.url.startsWith('about:'))
-      .map(t => t.url);
-    await closeTabsByUrls(allUrls);
-    playCloseSound();
+    const tabsToCloseAll = openTabs
+      .filter(t => t.url && !t.url.startsWith('chrome') && !t.url.startsWith('about:'));
 
-    document.querySelectorAll('#openTabsMissions .mission-card').forEach(c => {
-      shootConfetti(
-        c.getBoundingClientRect().left + c.offsetWidth / 2,
-        c.getBoundingClientRect().top  + c.offsetHeight / 2
-      );
-      animateCardOut(c);
-    });
+    const { closeAllTabsWithGuard } = await import('./binding.js');
 
-    showToast('All tabs closed. Fresh start.');
+    const doCloseAll = async () => {
+      const allUrls = tabsToCloseAll.map(t => t.url);
+      await closeTabsByUrls(allUrls);
+      playCloseSound();
+
+      document.querySelectorAll('#openTabsMissions .mission-card').forEach(c => {
+        shootConfetti(
+          c.getBoundingClientRect().left + c.offsetWidth / 2,
+          c.getBoundingClientRect().top  + c.offsetHeight / 2
+        );
+        animateCardOut(c);
+      });
+
+      showToast('All tabs closed. Fresh start.');
+    };
+
+    await closeAllTabsWithGuard(tabsToCloseAll, doCloseAll);
     return;
   }
 });
