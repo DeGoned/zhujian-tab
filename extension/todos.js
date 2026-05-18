@@ -1,4 +1,5 @@
 import { getStorage, setStorage, KEYS } from './storage.js'
+import { rebuildBindingsCache } from './binding.js'
 
 function uid() {
   return 't_' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36)
@@ -35,6 +36,7 @@ export async function createTodo(input) {
   const all = await listTodos()
   all.push(todo)
   await setStorage(KEYS.todos, all)
+  await rebuildBindingsCache()
   return todo
 }
 
@@ -48,6 +50,7 @@ export async function updateTodo(id, patch) {
   if (idx === -1) throw new Error(`todo ${id} not found`)
   all[idx] = { ...all[idx], ...patch }
   await setStorage(KEYS.todos, all)
+  await rebuildBindingsCache()
   return all[idx]
 }
 
@@ -58,6 +61,7 @@ export async function completeTodo(id) {
 export async function deleteTodo(id) {
   const all = await listTodos()
   await setStorage(KEYS.todos, all.filter(t => t.id !== id))
+  await rebuildBindingsCache()
 }
 
 function isToday(ts) {
