@@ -76,3 +76,19 @@ export function wireTodosInput() {
     input.focus()
   })
 }
+
+export function wireProjectControls() {
+  const btn = document.getElementById('btnNewProject')
+  if (!btn) return
+  btn.addEventListener('click', async () => {
+    const name = (prompt('新项目名：') || '').trim()
+    if (!name) return
+    const matches = await searchProjects(name)
+    if (matches.find(p => p.name.toLowerCase() === name.toLowerCase())) {
+      alert(`项目"${name}"已存在`)
+      return
+    }
+    await createProject({ name })
+    await renderTodosView()
+  })
+}
