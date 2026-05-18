@@ -59,3 +59,37 @@ export async function deleteTodo(id) {
   const all = await listTodos()
   await setStorage(KEYS.todos, all.filter(t => t.id !== id))
 }
+
+function isToday(ts) {
+  if (!ts) return false
+  const d = new Date(ts)
+  return todayStr() === `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+}
+
+/**
+ * 返回今日 view：{ pending, done }
+ * pending: pinnedToday OR (无项目 且 是今日新建 / rolloverCount>0)
+ * done: 今日 completedAt
+ */
+export async function listTodayTodos() {
+  const all = await listTodos()
+  const pending = all.filter(t =>
+    t.status === 'pending' && (
+      t.pinnedToday === true ||
+      (t.projectId === null && isToday(t.createdAt)) ||
+      (t.projectId === null && t.rolloverCount > 0)
+    )
+  ).sort((a, b) => a.createdAt - b.createdAt)
+  const done = all.filter(t =>
+    t.status === 'done' && isToday(t.completedAt)
+  ).sort((a, b) => (b.completedAt ?? 0) - (a.completedAt ?? 0))
+  return { pending, done }
+}
+
+export async function pinTodayTodo(id) {
+  return await updateTodo(id, { pinnedToday: true })
+}
+
+export async function unpinTodayTodo(id) {
+  return await updateTodo(id, { pinnedToday: false })
+}

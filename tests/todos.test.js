@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { createTodo, listTodos, updateTodo, deleteTodo, completeTodo } from '../extension/todos.js'
+import { createTodo, listTodos, updateTodo, deleteTodo, completeTodo, listTodayTodos, pinTodayTodo, unpinTodayTodo } from '../extension/todos.js'
 
 beforeEach(async () => { await chrome.storage.local.clear() })
 
@@ -44,5 +44,40 @@ describe('todo CRUD', () => {
     await deleteTodo(t.id)
     const all = await listTodos()
     expect(all).toEqual([])
+  })
+})
+
+describe('today view aggregation', () => {
+  it('includes unpinned no-project todos created today', async () => {
+    await createTodo({ text: 'a' })
+    const today = await listTodayTodos()
+    expect(today.pending.map(t => t.text)).toContain('a')
+  })
+
+  it('excludes project todos unless pinnedToday', async () => {
+    await createTodo({ text: 'p-task', projectId: 'p1' })
+    let today = await listTodayTodos()
+    expect(today.pending.find(t => t.text === 'p-task')).toBeUndefined()
+
+    const all = await listTodos()
+    await pinTodayTodo(all[0].id)
+    today = await listTodayTodos()
+    expect(today.pending.find(t => t.text === 'p-task')).toBeDefined()
+  })
+
+  it('completed today are in done bucket', async () => {
+    const t = await createTodo({ text: 'x' })
+    await completeTodo(t.id)
+    const today = await listTodayTodos()
+    expect(today.done.map(t => t.text)).toContain('x')
+    expect(today.pending.find(t => t.text === 'x')).toBeUndefined()
+  })
+
+  it('unpin removes from today', async () => {
+    const t = await createTodo({ text: 'p', projectId: 'p1' })
+    await pinTodayTodo(t.id)
+    await unpinTodayTodo(t.id)
+    const today = await listTodayTodos()
+    expect(today.pending.find(x => x.text === 'p')).toBeUndefined()
   })
 })
