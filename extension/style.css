@@ -1458,3 +1458,22 @@ footer { animation: fadeUp 0.5s ease 0.65s both; }
 #layout-root[class*="layout-mode-split"] #layout-divider.dragging {
   background: #8b5cf6;
 }
+
+/* ===== Critical fix: grid row must have definite height,
+   otherwise overflow:auto panes give 0 intrinsic height and
+   divider collapses to its min-height (6×6 square). ===== */
+
+#layout-root.layout-mode-split-h {
+  grid-template-rows: 100vh;
+}
+#layout-root.layout-mode-split-v {
+  grid-template-columns: 100vw;
+}
+
+/* Ensure divider visibly fills its track in both directions */
+#layout-root.layout-mode-split-h #layout-divider {
+  height: 100vh;
+}
+#layout-root.layout-mode-split-v #layout-divider {
+  width: 100vw;
+}
