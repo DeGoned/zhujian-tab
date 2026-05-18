@@ -1432,3 +1432,29 @@ footer { animation: fadeUp 0.5s ease 0.65s both; }
   align-self: stretch;
   justify-self: stretch;
 }
+
+/* ===== Fix: toggle btn's display:flex overrides [hidden] attribute ===== */
+.toggle-view-btn[hidden] { display: none; }
+
+/* ===== Fix: in split modes, force tab-out's dashboard-columns to stack
+   vertically so .active-section's 600px min-width can't push out the divider.
+   This is the same adaptation tab-out's own @media (max-width:800px) does. ===== */
+#layout-root[class*="layout-mode-split"] .dashboard-columns {
+  flex-direction: column;
+}
+#layout-root[class*="layout-mode-split"] .dashboard-columns .active-section {
+  min-width: 0;
+}
+#layout-root[class*="layout-mode-split"] .deferred-column {
+  width: 100%;
+  position: static;
+}
+
+/* ===== Visibility: divider color slightly darker for cream background ===== */
+#layout-root[class*="layout-mode-split"] #layout-divider {
+  background: #d4d4d4;
+}
+#layout-root[class*="layout-mode-split"] #layout-divider:hover,
+#layout-root[class*="layout-mode-split"] #layout-divider.dragging {
+  background: #8b5cf6;
+}
