@@ -1373,3 +1373,43 @@ footer { animation: fadeUp 0.5s ease 0.65s both; }
 }
 .settings-panel a { color: #8b5cf6; text-decoration: none; }
 .settings-panel a:hover { text-decoration: underline; }
+
+/* ===== Split modes (Task 4.3) ===== */
+#layout-root.layout-mode-split-h {
+  display: grid;
+  grid-template-columns: var(--split-left, 50%) 6px 1fr;
+  min-height: 100vh;
+}
+#layout-root.layout-mode-split-h #tabs-pane { grid-column: 1; overflow: auto; }
+#layout-root.layout-mode-split-h #layout-divider { grid-column: 2; }
+#layout-root.layout-mode-split-h #todos-pane { grid-column: 3; overflow: auto; }
+
+#layout-root.layout-mode-split-h #layout-divider {
+  background: #e5e5e5;
+  cursor: col-resize;
+  transition: background 0.15s;
+  border: none;
+}
+#layout-root.layout-mode-split-h #layout-divider:hover,
+#layout-root.layout-mode-split-h #layout-divider.dragging { background: #8b5cf6; }
+
+/* Vertical split */
+#layout-root.layout-mode-split-v {
+  display: grid;
+  grid-template-rows: var(--split-top, 50%) 6px 1fr;
+  min-height: 100vh;
+}
+#layout-root.layout-mode-split-v #tabs-pane { grid-row: 1; overflow: auto; }
+#layout-root.layout-mode-split-v #layout-divider { grid-row: 2; }
+#layout-root.layout-mode-split-v #todos-pane { grid-row: 3; overflow: auto; }
+
+#layout-root.layout-mode-split-v #layout-divider {
+  background: #e5e5e5;
+  cursor: row-resize;
+  transition: background 0.15s;
+}
+#layout-root.layout-mode-split-v #layout-divider:hover,
+#layout-root.layout-mode-split-v #layout-divider.dragging { background: #8b5cf6; }
+
+/* Ensure pane[hidden] still hides in split (override default block) */
+#layout-root[class*="layout-mode-split"] .pane[hidden] { display: none; }
