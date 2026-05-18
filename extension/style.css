@@ -1413,3 +1413,22 @@ footer { animation: fadeUp 0.5s ease 0.65s both; }
 
 /* Ensure pane[hidden] still hides in split (override default block) */
 #layout-root[class*="layout-mode-split"] .pane[hidden] { display: none; }
+
+/* ===== Split-mode containment fix (panes must not overflow grid tracks) ===== */
+/* grid items default to min-width:auto, so content wider than the track      */
+/* (e.g. .dashboard-columns min-width:600px) overflows and covers the divider  */
+#layout-root[class*="layout-mode-split"] .pane {
+  min-width: 0;
+  min-height: 0;
+  box-sizing: border-box;
+}
+#layout-root[class*="layout-mode-split"] .pane .container {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+#layout-root[class*="layout-mode-split"] #layout-divider {
+  min-width: 6px;
+  min-height: 6px;
+  align-self: stretch;
+  justify-self: stretch;
+}
