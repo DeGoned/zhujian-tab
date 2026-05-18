@@ -1284,3 +1284,29 @@ footer { animation: fadeUp 0.5s ease 0.65s both; }
 .pd-color.pd-green { background: #10b981; }
 .pd-color.pd-blue { background: #3b82f6; }
 .pd-color.pd-red { background: #ef4444; }
+
+/* ===== Toggle view button (Task 4.1) ===== */
+.toggle-view-btn {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 100;
+  background: #111;
+  color: white;
+  border: none;
+  border-radius: 14px;
+  padding: 6px 14px;
+  font-size: 12px;
+  font-family: 'DM Sans', sans-serif;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.toggle-view-btn .active { font-weight: 600; }
+.toggle-view-btn .sep { opacity: 0.4; }
+.toggle-view-btn span:not(.sep) {
+  padding: 2px 6px;
+  border-radius: 8px;
+}
+.toggle-view-btn span:not(.sep).active { background: rgba(255, 255, 255, 0.15); }
