@@ -1516,3 +1516,65 @@ footer { animation: fadeUp 0.5s ease 0.65s both; }
 }
 .bindings li:hover .b-unbind { opacity: 0.5; }
 .bindings .b-unbind:hover { opacity: 1 !important; color: #ef4444; }
+
+/* ===== Tab card → Todo button (Task 5.3) ===== */
+.to-todo-btn {
+  display: none;
+  background: #8b5cf6;
+  color: white;
+  border: none;
+  border-radius: 12px;
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: 'DM Sans', sans-serif;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  line-height: 1.6;
+}
+.to-todo-btn:hover { background: #7c3aed; }
+.page-chip:hover .to-todo-btn { display: inline-block; }
+
+/* ===== Bind popover (Task 5.3 / 5.4) ===== */
+.bind-popover {
+  position: fixed;
+  z-index: 500;
+  width: 280px;
+  background: white;
+  border: 1px solid #d4d4d4;
+  border-radius: 8px;
+  padding: 14px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+  font-family: 'DM Sans', sans-serif;
+}
+.bind-popover input {
+  width: 100%;
+  padding: 7px 10px;
+  font-size: 13px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  outline: none;
+  box-sizing: border-box;
+}
+.bind-popover input:focus { border-color: #8b5cf6; }
+.bind-pop-divider {
+  margin: 12px 0 6px;
+  font-size: 10px;
+  opacity: 0.5;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.bind-pop-list {
+  max-height: 220px;
+  overflow-y: auto;
+}
+.bind-pop-list .item {
+  padding: 6px 8px;
+  cursor: pointer;
+  font-size: 12px;
+  border-radius: 4px;
+  line-height: 1.4;
+}
+.bind-pop-list .item:hover { background: #f5f5f5; }
+.bind-pop-list .empty { padding: 8px; font-size: 11px; opacity: 0.5; }

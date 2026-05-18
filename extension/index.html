@@ -191,6 +191,13 @@
 <!-- If the file doesn't exist, that's fine — app.js uses sensible defaults. -->
 <script src="config.local.js" onerror="/* no personal config, that's fine */"></script>
 
+<!-- Bind popover (shared between Task 5.3 tab→todo flow and Task 5.4 todo→tab flow) -->
+<div id="bindPopover" class="bind-popover" hidden role="dialog" aria-label="加到 todo">
+  <input id="bindPopInput" type="text" placeholder="新建 todo，回车保存（支持 #项目名）" autocomplete="off" />
+  <div class="bind-pop-divider">或加到现有 todo</div>
+  <div id="bindPopExisting" class="bind-pop-list"></div>
+</div>
+
 <!-- Main dashboard logic — loads last so the DOM is ready -->
 <script type="module" src="app.js"></script>
 </body>
