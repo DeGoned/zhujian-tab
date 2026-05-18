@@ -13,10 +13,16 @@ export async function applyLayout() {
   const toggleBtn = document.getElementById('toggleViewBtn')
   if (!root) return
 
-  root.className = `layout-mode-${s.layoutMode}`
+  // Narrow-screen override: split-h doesn't work well below 720px → force split-v
+  let effectiveMode = s.layoutMode
+  if (effectiveMode === 'split-h' && window.innerWidth < 720) {
+    effectiveMode = 'split-v'
+  }
+
+  root.className = `layout-mode-${effectiveMode}`
   root.dataset.visible = s.toggleVisible
 
-  if (s.layoutMode === 'toggle') {
+  if (effectiveMode === 'toggle') {
     if (tabs) tabs.hidden = s.toggleVisible !== 'tabs'
     if (todos) todos.hidden = s.toggleVisible !== 'todos'
     if (divider) divider.hidden = true
@@ -32,9 +38,9 @@ export async function applyLayout() {
     if (todos) todos.hidden = false
     if (divider) divider.hidden = false
     if (toggleBtn) toggleBtn.hidden = true
-    applySplit(s.layoutMode, s.splitRatio)
+    applySplit(effectiveMode, s.splitRatio)
   }
-  if (s.toggleVisible === 'todos' || s.layoutMode !== 'toggle') await renderTodosView()
+  if (s.toggleVisible === 'todos' || effectiveMode !== 'toggle') await renderTodosView()
 }
 
 function applySplit(mode, ratio) {
@@ -108,3 +114,9 @@ export function wireDivider() {
     await applyLayout()
   })
 }
+
+let _resizeTimer = null
+window.addEventListener('resize', () => {
+  clearTimeout(_resizeTimer)
+  _resizeTimer = setTimeout(() => { applyLayout() }, 200)
+})
