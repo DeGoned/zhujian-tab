@@ -1477,3 +1477,13 @@ footer { animation: fadeUp 0.5s ease 0.65s both; }
 #layout-root.layout-mode-split-v #layout-divider {
   width: 100vw;
 }
+
+/* ===== Contain split layout to viewport. Without this, taller pane content
+   makes the page scroll, hiding the (height:100vh) divider. The panes already
+   have overflow:auto, so internal scrolling preserves all content access. ===== */
+#layout-root.layout-mode-split-h,
+#layout-root.layout-mode-split-v {
+  height: 100vh;
+  max-height: 100vh;
+  overflow: hidden;
+}
