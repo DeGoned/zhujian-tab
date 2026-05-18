@@ -16,7 +16,7 @@
 'use strict';
 
 import { showToast, playCloseSound, shootConfetti, setSoundEnabled } from './ui.js'
-import { getSettings } from './settings.js'
+import { getSettings, updateSettings } from './settings.js'
 import { renderTodosView, wireTodosInput, wireProjectControls, wireTodosView } from './todos-view.js'
 import { applyLayout, wireToggleBtn, wireDivider } from './layout.js'
 import { wireSettingsPanel } from './settings-panel.js'
@@ -1390,6 +1390,24 @@ document.addEventListener('input', async (e) => {
   wireSettingsPanel()      // NEW
   wireDivider()            // NEW
   await applyLayout()     // NEW — apply current mode (default toggle, tabs visible)
+
+  // In-page handler for Cmd/Ctrl+Shift+Space — switches to Todos and focuses input.
+  // Needed because the global hotkey from manifest can't inject content scripts
+  // into chrome-extension:// pages (i.e., the new tab page itself).
+  document.addEventListener('keydown', async (e) => {
+    const isHotkey = (e.metaKey || e.ctrlKey) && e.shiftKey && e.code === 'Space'
+    if (!isHotkey) return
+    e.preventDefault()
+    e.stopPropagation()
+    try {
+      await updateSettings({ toggleVisible: 'todos' })
+      await applyLayout()
+      const input = document.getElementById('todos-input')
+      if (input) input.focus()
+    } catch (err) {
+      console.warn('Tab Out: in-page hotkey failed', err)
+    }
+  })
 
   // Cross-tab-page sync: when storage changes, re-render automatically
   onStorageChanged(KEYS.todos, async () => { await renderTodosView() })
