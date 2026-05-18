@@ -166,3 +166,63 @@ export function showToast(message) {
   toast.classList.add('visible');
   setTimeout(() => toast.classList.remove('visible'), 2500);
 }
+
+/**
+ * Show a modal dialog. Returns a Promise that resolves to the clicked button's value,
+ * or 'cancel' if user pressed Esc / clicked backdrop.
+ *
+ * @param {object} opts
+ * @param {string} opts.title          Modal title (renders in serif h2)
+ * @param {string} opts.bodyHtml       HTML for body. Inner content trusted (caller responsible for escaping user-provided text).
+ * @param {Array<{label: string, kind: 'primary'|'secondary'|'ghost', value: string}>} opts.buttons
+ * @param {boolean} [opts.dismissable=true] If true, Esc and backdrop click resolve to 'cancel'. If false, only buttons close it.
+ * @returns {Promise<string>} value of the clicked button, or 'cancel'
+ */
+export function showModal({ title, bodyHtml, buttons, dismissable = true }) {
+  return new Promise(resolve => {
+    const bg = document.createElement('div')
+    bg.className = 'tabout-modal-bg'
+    bg.innerHTML = `
+      <div class="tabout-modal" role="dialog" aria-modal="true" aria-label="${escapeAttr(title)}">
+        <h2>${escapeHtml(title)}</h2>
+        <div class="modal-body">${bodyHtml || ''}</div>
+        <div class="actions">
+          ${buttons.map(b => `<button class="btn-${b.kind}" data-value="${escapeAttr(b.value)}">${escapeHtml(b.label)}</button>`).join('')}
+        </div>
+      </div>
+    `
+    document.body.appendChild(bg)
+
+    function done(value) {
+      document.removeEventListener('keydown', onKey, true)
+      bg.remove()
+      resolve(value)
+    }
+
+    bg.addEventListener('click', (e) => {
+      const btn = e.target.closest('button[data-value]')
+      if (btn) {
+        done(btn.dataset.value)
+        return
+      }
+      if (dismissable && e.target === bg) {
+        done('cancel')
+      }
+    })
+
+    function onKey(e) {
+      if (e.key === 'Escape' && dismissable) {
+        e.stopPropagation()
+        done('cancel')
+      }
+    }
+    document.addEventListener('keydown', onKey, true)
+  })
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]))
+}
+function escapeAttr(s) {
+  return String(s).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]))
+}

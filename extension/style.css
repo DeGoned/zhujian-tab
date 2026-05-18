@@ -1602,3 +1602,94 @@ footer { animation: fadeUp 0.5s ease 0.65s both; }
 .t-text {
   /* Make text+checkbox a single inline unit so + tab sits next to it */
 }
+
+/* ===== Modal (Task 7.1) ===== */
+.tabout-modal-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: tabout-modal-fade 0.18s ease-out;
+}
+@keyframes tabout-modal-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.tabout-modal {
+  background: white;
+  border-radius: 14px;
+  padding: 26px 30px;
+  width: 480px;
+  max-width: 90vw;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.35), 0 8px 20px rgba(0, 0, 0, 0.15);
+  font-family: 'DM Sans', sans-serif;
+  animation: tabout-modal-pop 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes tabout-modal-pop {
+  from { transform: translateY(6px) scale(0.97); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+
+.tabout-modal h2 {
+  font-family: 'Newsreader', serif;
+  font-weight: 400;
+  margin: 0 0 14px;
+  font-size: 22px;
+  color: #111;
+}
+
+.tabout-modal .modal-body {
+  font-size: 14px;
+  color: #444;
+  line-height: 1.6;
+  margin-bottom: 22px;
+}
+.tabout-modal .modal-body ul {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0;
+}
+.tabout-modal .modal-body ul li {
+  padding: 4px 0;
+  font-size: 13px;
+}
+.tabout-modal .modal-body .muted { color: #888; font-size: 12px; }
+
+.tabout-modal .actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+.tabout-modal button {
+  font-family: 'DM Sans', sans-serif;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.15s;
+  border: 1px solid transparent;
+}
+.tabout-modal .btn-primary {
+  background: #8b5cf6;
+  color: white;
+  border-color: #8b5cf6;
+}
+.tabout-modal .btn-primary:hover { background: #7c3aed; border-color: #7c3aed; }
+.tabout-modal .btn-secondary {
+  background: white;
+  border-color: #ddd;
+  color: #333;
+}
+.tabout-modal .btn-secondary:hover { border-color: #8b5cf6; color: #8b5cf6; }
+.tabout-modal .btn-ghost {
+  background: none;
+  border-color: transparent;
+  color: #888;
+}
+.tabout-modal .btn-ghost:hover { color: #333; background: #f5f5f5; }
