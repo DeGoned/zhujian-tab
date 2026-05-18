@@ -20,6 +20,7 @@ import { getSettings } from './settings.js'
 import { renderTodosView, wireTodosInput, wireProjectControls } from './todos-view.js'
 import { applyLayout, wireToggleBtn, wireDivider } from './layout.js'
 import { wireSettingsPanel } from './settings-panel.js'
+import { onStorageChanged, KEYS } from './storage.js'
 
 
 /* ----------------------------------------------------------------
@@ -1376,4 +1377,9 @@ document.addEventListener('input', async (e) => {
   wireSettingsPanel()      // NEW
   wireDivider()            // NEW
   await applyLayout()     // NEW — apply current mode (default toggle, tabs visible)
+
+  // Cross-tab-page sync: when storage changes, re-render automatically
+  onStorageChanged(KEYS.todos, async () => { await renderTodosView() })
+  onStorageChanged(KEYS.projects, async () => { await renderTodosView() })
+  onStorageChanged(KEYS.settings, async () => { await applyLayout() })
 })()
