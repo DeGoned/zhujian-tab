@@ -83,14 +83,13 @@ chrome.tabs.onCreated.addListener(() => {
   updateBadge();
 });
 
-// Update badge whenever a tab is closed
-chrome.tabs.onRemoved.addListener(() => {
-  updateBadge();
-});
+// Update badge whenever a tab is closed — handled by the closure-detection
+// listener below, which calls updateBadge() and also checks for bound todos.
 
 // Update badge when a tab's URL changes (e.g. navigating to/from chrome://)
-chrome.tabs.onUpdated.addListener(() => {
+chrome.tabs.onUpdated.addListener((tabId, _changeInfo, tab) => {
   updateBadge();
+  _rememberTab(tabId, tab);
 });
 
 // ─── Initial run ─────────────────────────────────────────────────────────────
@@ -123,6 +122,58 @@ chrome.commands.onCommand.addListener(async (command) => {
     })
   } catch (e) {
     console.warn('Tab Out: inject capture overlay failed', e)
+  }
+})
+
+// ============================================================
+// Tab Out + Todo — browser-native close detection + toast broadcast
+// ============================================================
+
+import { urlIsBound, getTodosBoundToUrl } from './binding.js'
+
+// Cache last-known tab metadata so we can read it after onRemoved fires
+const _tabMetaCache = new Map() // tabId -> { url, title }
+
+function _rememberTab(tabId, tab) {
+  if (!tab) return
+  if (tab.url) _tabMetaCache.set(tabId, { url: tab.url, title: tab.title || '' })
+}
+
+// Best-effort initial seeding on extension startup
+chrome.tabs.query({}, (tabs) => {
+  for (const t of tabs || []) _rememberTab(t.id, t)
+})
+
+chrome.tabs.onRemoved.addListener(async (tabId, _removeInfo) => {
+  updateBadge()
+  const meta = _tabMetaCache.get(tabId)
+  _tabMetaCache.delete(tabId)
+  if (!meta || !meta.url) return
+  // Don't bother if URL isn't bound to any pending todo
+  if (!(await urlIsBound(meta.url))) return
+  const todos = await getTodosBoundToUrl(meta.url)
+  if (todos.length === 0) return
+
+  // Broadcast a single closureId to all open new tab pages.
+  // The dedupe mechanism in app.js ensures only one page shows the toast.
+  const closureId = `close-${tabId}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+  try {
+    const allTabs = await chrome.tabs.query({})
+    const payload = {
+      type: 'tab-closed-while-bound',
+      closureId,
+      url: meta.url,
+      title: meta.title,
+      todoIds: todos.map(t => t.id),
+      todoTexts: todos.map(t => t.text),
+    }
+    for (const t of allTabs) {
+      if (t.id && t.url && t.url.startsWith(chrome.runtime.getURL(''))) {
+        chrome.tabs.sendMessage(t.id, payload).catch(() => {})  // ignore tabs without listener
+      }
+    }
+  } catch (e) {
+    console.warn('Tab Out: closure broadcast failed', e)
   }
 })
 

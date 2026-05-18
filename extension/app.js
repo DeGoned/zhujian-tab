@@ -1400,6 +1400,89 @@ document.addEventListener('input', async (e) => {
 
 
 /* ----------------------------------------------------------------
+   BROWSER-NATIVE CLOSE DETECTION — Toast (Task 7.3)
+   ---------------------------------------------------------------- */
+
+// Cross-tab-page dedupe — multiple open new tab pages all receive the broadcast,
+// but only the first to claim the closureId shows the toast.
+const _shownClosures = new Set()
+
+chrome.runtime.onMessage.addListener((msg, _sender, _sendResponse) => {
+  if (!msg || msg.type !== 'tab-closed-while-bound') return false
+  ;(async () => {
+    if (_shownClosures.has(msg.closureId)) return
+    _shownClosures.add(msg.closureId)
+    // Persist seen IDs across page reloads, capped at last 50
+    try {
+      const data = await chrome.storage.local.get('taboutShownClosures')
+      const seen = data.taboutShownClosures || []
+      if (seen.includes(msg.closureId)) return
+      const next = [...seen, msg.closureId].slice(-50)
+      await chrome.storage.local.set({ taboutShownClosures: next })
+    } catch (_) {}
+    showClosureToast(msg.url, msg.title, msg.todoIds, msg.todoTexts)
+  })()
+  return false
+})
+
+function showClosureToast(url, title, todoIds, todoTexts) {
+  // Remove any existing closure toast (only one at a time)
+  document.querySelectorAll('.closure-toast').forEach(el => el.remove())
+
+  const el = document.createElement('div')
+  el.className = 'closure-toast'
+  const titleStr = title || url
+  const todoStr = todoTexts.length === 1
+    ? `「${todoTexts[0]}」`
+    : `${todoTexts.length} 个 todo`
+  el.innerHTML = `
+    <div class="ct-icon">🔗</div>
+    <div class="ct-text">刚关闭的 tab 关联 ${todoStr}</div>
+    <button class="ct-btn" data-action="ct-reopen">↶ 撤销关闭</button>
+    <button class="ct-btn ct-btn-primary" data-action="ct-mark-done">✓ 标完成</button>
+    <button class="ct-btn ct-btn-ghost" data-action="ct-dismiss" aria-label="dismiss">×</button>
+  `
+  document.body.appendChild(el)
+
+  let dismissed = false
+  function dismiss() {
+    if (dismissed) return
+    dismissed = true
+    el.classList.add('out')
+    setTimeout(() => el.remove(), 300)
+  }
+
+  el.addEventListener('click', async (e) => {
+    const action = e.target.dataset?.action
+    if (!action) return
+    if (action === 'ct-reopen') {
+      try { chrome.tabs.create({ url, active: true }) } catch (_) {}
+      dismiss()
+      return
+    }
+    if (action === 'ct-mark-done') {
+      const { completeTodo } = await import('./todos.js')
+      for (const id of todoIds) {
+        try { await completeTodo(id) } catch (_) {}
+      }
+      try {
+        const { renderTodosView } = await import('./todos-view.js')
+        await renderTodosView()
+      } catch (_) {}
+      dismiss()
+      return
+    }
+    if (action === 'ct-dismiss') {
+      dismiss()
+    }
+  })
+
+  // Auto-dismiss after 5 seconds
+  setTimeout(dismiss, 5000)
+}
+
+
+/* ----------------------------------------------------------------
    INITIALIZE
    ---------------------------------------------------------------- */
 ;(async () => {
