@@ -1,3 +1,9 @@
+// Tab Out + Todo extensions — static imports for service worker (MV3 module)
+import { createTodo } from './todos.js'
+import { searchProjects, createProject } from './projects.js'
+import { rememberUrlTitle } from './binding.js'
+import { parseTodoInput } from './input-parser.js'
+
 /**
  * background.js — Service Worker for Badge Updates
  *
@@ -125,12 +131,6 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (!msg || msg.type !== 'capture') return false
   ;(async () => {
     try {
-      const [{ createTodo }, { searchProjects, createProject }, { rememberUrlTitle }, { parseTodoInput }] = await Promise.all([
-        import(chrome.runtime.getURL('todos.js')),
-        import(chrome.runtime.getURL('projects.js')),
-        import(chrome.runtime.getURL('binding.js')),
-        import(chrome.runtime.getURL('input-parser.js')),
-      ])
       const { text, projectName } = parseTodoInput(msg.text || '')
       let projectId = null
       if (projectName) {
