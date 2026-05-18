@@ -15,7 +15,21 @@
 
 'use strict';
 
-import { showToast, playCloseSound, shootConfetti } from './ui.js'
+import { showToast, playCloseSound, shootConfetti, setSoundEnabled } from './ui.js'
+import { getSettings } from './settings.js'
+
+
+/* ----------------------------------------------------------------
+   SETTINGS INIT
+   ---------------------------------------------------------------- */
+async function initSettingsBeforeRender() {
+  try {
+    const s = await getSettings()
+    setSoundEnabled(s.soundEnabled)
+  } catch (e) {
+    console.warn('Failed to load settings, using defaults:', e)
+  }
+}
 
 
 /* ----------------------------------------------------------------
@@ -1349,4 +1363,7 @@ document.addEventListener('input', async (e) => {
 /* ----------------------------------------------------------------
    INITIALIZE
    ---------------------------------------------------------------- */
-renderDashboard();
+;(async () => {
+  await initSettingsBeforeRender()
+  await renderDashboard()
+})()
