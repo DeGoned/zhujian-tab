@@ -117,10 +117,35 @@
     </div><!-- end .container -->
   </div><!-- end #tabs-pane -->
 
-  <!-- TODOS PANE (v0 placeholder) -->
+  <!-- TODOS PANE -->
   <div id="todos-pane" class="pane" hidden>
     <div class="container">
-      <p class="placeholder">Todos coming soon.</p>
+      <header class="todos-header">
+        <h1>Todos</h1>
+        <div class="todos-input-wrap">
+          <input id="todos-input" type="text" placeholder="输入待办，回车保存。打 # 选项目" autocomplete="off" />
+        </div>
+      </header>
+      <div class="todos-body">
+        <section class="today-col">
+          <h2>今日 <span class="count" id="todayCount"></span></h2>
+          <ul id="todayList" class="todo-list"></ul>
+          <details class="history-fold">
+            <summary>📁 历史 <span id="todayDoneCount"></span></summary>
+            <ul id="todayDoneList" class="todo-list"></ul>
+          </details>
+        </section>
+        <section class="projects-col">
+          <h2>项目 <span class="count" id="projectCount"></span>
+            <button class="btn-new-project" id="btnNewProject">+ 新建项目</button>
+          </h2>
+          <div id="projectsList"></div>
+          <details class="archive-fold">
+            <summary>📁 已结项目 <span id="archivedCount"></span></summary>
+            <div id="archivedProjectsList"></div>
+          </details>
+        </section>
+      </div>
     </div>
   </div>
 
