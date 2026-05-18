@@ -1246,3 +1246,41 @@ footer { animation: fadeUp 0.5s ease 0.65s both; }
 .project-card[data-color="red"] { border-left-color: #ef4444; }
 .project-name { font-weight: 600; font-size: 13px; margin-bottom: 6px; }
 .archived-proj { padding: 6px 0; font-size: 12px; opacity: 0.7; }
+
+/* ===== Project # dropdown (Task 3.5) ===== */
+.proj-dropdown {
+  position: fixed;
+  z-index: 400;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  max-height: 240px;
+  overflow-y: auto;
+  padding: 4px 0;
+  font-size: 12px;
+  font-family: 'DM Sans', sans-serif;
+}
+.pd-item {
+  padding: 6px 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.pd-item.sel { background: rgba(139,92,246,0.1); }
+.pd-item:hover { background: #f5f5f5; }
+.pd-item.sel:hover { background: rgba(139,92,246,0.15); }
+.pd-new { color: #8b5cf6; }
+.pd-empty { padding: 8px 10px; color: #999; font-size: 11px; }
+.pd-color {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+.pd-color.pd-purple { background: #8b5cf6; }
+.pd-color.pd-orange { background: #f59e0b; }
+.pd-color.pd-green { background: #10b981; }
+.pd-color.pd-blue { background: #3b82f6; }
+.pd-color.pd-red { background: #ef4444; }

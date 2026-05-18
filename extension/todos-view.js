@@ -1,6 +1,7 @@
 import { listTodos, listTodayTodos, createTodo } from './todos.js'
 import { listProjects, searchProjects, createProject } from './projects.js'
 import { parseTodoInput } from './input-parser.js'
+import { attachProjectDropdown } from './project-dropdown.js'
 
 const $ = (id) => document.getElementById(id)
 
@@ -57,8 +58,10 @@ function escapeHtml(s) {
 export function wireTodosInput() {
   const input = document.getElementById('todos-input')
   if (!input) return
+  attachProjectDropdown(input)
   input.addEventListener('keydown', async (e) => {
     if (e.key !== 'Enter') return
+    if (e.defaultPrevented) return  // 下拉已处理（选了一项），跳过提交
     const raw = input.value
     if (!raw.trim()) return
     const { text, projectName } = parseTodoInput(raw)
