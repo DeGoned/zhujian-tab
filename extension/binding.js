@@ -65,6 +65,17 @@ export async function getUrlTitle(url) {
 // ===== Bind popover state (module-scoped) =====
 let _popOutsideHandler = null
 
+function _wireOutsideClick() {
+  if (_popOutsideHandler) return  // already wired
+  _popOutsideHandler = (ev) => {
+    const pop = document.getElementById('bindPopover')
+    if (!pop || pop.hidden) return
+    if (pop.contains(ev.target)) return
+    closeBindPopover()
+  }
+  document.addEventListener('mousedown', _popOutsideHandler)
+}
+
 /**
  * 打开"从 tab 加到 todo"的 popover。
  * @param {string} url   待绑定的 tab URL
@@ -141,14 +152,7 @@ export async function openBindPopover(url, title, anchorEl) {
   }
 
   // Close on outside click
-  setTimeout(() => {
-    if (_popOutsideHandler) document.removeEventListener('mousedown', _popOutsideHandler)
-    _popOutsideHandler = (ev) => {
-      if (pop.hidden) return
-      if (!pop.contains(ev.target)) closeBindPopover()
-    }
-    document.addEventListener('mousedown', _popOutsideHandler, { once: true })
-  }, 0)
+  setTimeout(() => _wireOutsideClick(), 0)
 }
 
 export function closeBindPopover() {
@@ -175,10 +179,11 @@ export async function openAddTabPopover(todoId, anchorEl) {
   pop.style.top = `${Math.max(8, rect.top)}px`
   pop.hidden = false
 
-  // Different mode: hide input, change divider text
+  // Search mode: input visible, repurposed as search box
   const input = document.getElementById('bindPopInput')
-  input.hidden = true
+  input.hidden = false
   input.value = ''
+  input.placeholder = '搜索 tab（标题或 URL）...'
   document.querySelector('.bind-pop-divider').textContent = '从已打开 tab 中选'
 
   // Fetch open tabs
@@ -193,12 +198,29 @@ export async function openAddTabPopover(todoId, anchorEl) {
 
   const candidates = tabs.filter(t => t.url && !already.has(t.url))
   const listEl = document.getElementById('bindPopExisting')
-  listEl.innerHTML = candidates.length === 0
-    ? `<div class="empty">没有可绑的 tab</div>`
-    : candidates.map(t => {
-        const title = (t.title || t.url).trim()
-        return `<div class="item" data-url="${escapeAttr(t.url)}" data-title="${escapeAttr(title)}">${_escapeHtml(title)}</div>`
-      }).join('')
+
+  function renderList(filter = '') {
+    const f = filter.toLowerCase()
+    const filtered = candidates.filter(t => {
+      if (!f) return true
+      return (t.title || '').toLowerCase().includes(f) || (t.url || '').toLowerCase().includes(f)
+    })
+    listEl.innerHTML = filtered.length === 0
+      ? `<div class="empty">${f ? '没有匹配的 tab' : '没有可绑的 tab'}</div>`
+      : filtered.map(t => {
+          const title = (t.title || t.url).trim()
+          return `<div class="item" data-url="${escapeAttr(t.url)}" data-title="${escapeAttr(title)}">${_escapeHtml(title)}</div>`
+        }).join('')
+  }
+  renderList()  // initial render
+
+  // Wire input handlers for search mode (overrides any create-mode handlers)
+  input.onkeydown = (e) => {
+    if (e.key === 'Escape') return closeBindPopover()
+    // Enter has no effect in search mode; selection is by clicking item
+  }
+  input.oninput = (e) => renderList(e.target.value)
+  setTimeout(() => input.focus(), 0)
 
   listEl.onclick = async (e) => {
     const item = e.target.closest('.item')
@@ -214,14 +236,8 @@ export async function openAddTabPopover(todoId, anchorEl) {
     showToast('已加绑')
   }
 
-  setTimeout(() => {
-    if (_popOutsideHandler) document.removeEventListener('mousedown', _popOutsideHandler)
-    _popOutsideHandler = (ev) => {
-      if (pop.hidden) return
-      if (!pop.contains(ev.target)) closeBindPopover()
-    }
-    document.addEventListener('mousedown', _popOutsideHandler, { once: true })
-  }, 0)
+  // Close on outside click
+  setTimeout(() => _wireOutsideClick(), 0)
 }
 
 function escapeAttr(s) {
