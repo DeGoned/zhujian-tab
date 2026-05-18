@@ -1374,116 +1374,87 @@ footer { animation: fadeUp 0.5s ease 0.65s both; }
 .settings-panel a { color: #8b5cf6; text-decoration: none; }
 .settings-panel a:hover { text-decoration: underline; }
 
-/* ===== Split modes (Task 4.3) ===== */
-#layout-root.layout-mode-split-h {
-  display: grid;
-  grid-template-columns: var(--split-left, 50%) 6px 1fr;
-  min-height: 100vh;
-}
-#layout-root.layout-mode-split-h #tabs-pane { grid-column: 1; overflow: auto; }
-#layout-root.layout-mode-split-h #layout-divider { grid-column: 2; }
-#layout-root.layout-mode-split-h #todos-pane { grid-column: 3; overflow: auto; }
+/* =================================================================
+   SPLIT LAYOUT MODES (clean rewrite)
+   - DOM order: tabs-pane, layout-divider, todos-pane
+   - #layout-root constrained to viewport (height: 100vh + overflow:hidden)
+   - Panes scroll internally via their own overflow: auto
+   ================================================================= */
 
-#layout-root.layout-mode-split-h #layout-divider {
-  background: #e5e5e5;
-  cursor: col-resize;
-  transition: background 0.15s;
-  border: none;
-}
-#layout-root.layout-mode-split-h #layout-divider:hover,
-#layout-root.layout-mode-split-h #layout-divider.dragging { background: #8b5cf6; }
+/* Toggle button hides in split modes (display:flex CSS overrides [hidden] attr) */
+.toggle-view-btn[hidden] { display: none !important; }
 
-/* Vertical split */
-#layout-root.layout-mode-split-v {
-  display: grid;
-  grid-template-rows: var(--split-top, 50%) 6px 1fr;
-  min-height: 100vh;
-}
-#layout-root.layout-mode-split-v #tabs-pane { grid-row: 1; overflow: auto; }
-#layout-root.layout-mode-split-v #layout-divider { grid-row: 2; }
-#layout-root.layout-mode-split-v #todos-pane { grid-row: 3; overflow: auto; }
-
-#layout-root.layout-mode-split-v #layout-divider {
-  background: #e5e5e5;
-  cursor: row-resize;
-  transition: background 0.15s;
-}
-#layout-root.layout-mode-split-v #layout-divider:hover,
-#layout-root.layout-mode-split-v #layout-divider.dragging { background: #8b5cf6; }
-
-/* Ensure pane[hidden] still hides in split (override default block) */
-#layout-root[class*="layout-mode-split"] .pane[hidden] { display: none; }
-
-/* ===== Split-mode containment fix (panes must not overflow grid tracks) ===== */
-/* grid items default to min-width:auto, so content wider than the track      */
-/* (e.g. .dashboard-columns min-width:600px) overflows and covers the divider  */
-#layout-root[class*="layout-mode-split"] .pane {
-  min-width: 0;
-  min-height: 0;
-  box-sizing: border-box;
-}
-#layout-root[class*="layout-mode-split"] .pane .container {
-  max-width: 100%;
-  box-sizing: border-box;
-}
-#layout-root[class*="layout-mode-split"] #layout-divider {
-  min-width: 6px;
-  min-height: 6px;
-  align-self: stretch;
-  justify-self: stretch;
-}
-
-/* ===== Fix: toggle btn's display:flex overrides [hidden] attribute ===== */
-.toggle-view-btn[hidden] { display: none; }
-
-/* ===== Fix: in split modes, force tab-out's dashboard-columns to stack
-   vertically so .active-section's 600px min-width can't push out the divider.
-   This is the same adaptation tab-out's own @media (max-width:800px) does. ===== */
-#layout-root[class*="layout-mode-split"] .dashboard-columns {
-  flex-direction: column;
-}
-#layout-root[class*="layout-mode-split"] .dashboard-columns .active-section {
-  min-width: 0;
-}
-#layout-root[class*="layout-mode-split"] .deferred-column {
-  width: 100%;
-  position: static;
-}
-
-/* ===== Visibility: divider color slightly darker for cream background ===== */
-#layout-root[class*="layout-mode-split"] #layout-divider {
-  background: #d4d4d4;
-}
-#layout-root[class*="layout-mode-split"] #layout-divider:hover,
-#layout-root[class*="layout-mode-split"] #layout-divider.dragging {
-  background: #8b5cf6;
-}
-
-/* ===== Critical fix: grid row must have definite height,
-   otherwise overflow:auto panes give 0 intrinsic height and
-   divider collapses to its min-height (6×6 square). ===== */
-
-#layout-root.layout-mode-split-h {
-  grid-template-rows: 100vh;
-}
-#layout-root.layout-mode-split-v {
-  grid-template-columns: 100vw;
-}
-
-/* Ensure divider visibly fills its track in both directions */
-#layout-root.layout-mode-split-h #layout-divider {
-  height: 100vh;
-}
-#layout-root.layout-mode-split-v #layout-divider {
-  width: 100vw;
-}
-
-/* ===== Contain split layout to viewport. Without this, taller pane content
-   makes the page scroll, hiding the (height:100vh) divider. The panes already
-   have overflow:auto, so internal scrolling preserves all content access. ===== */
+/* Shared root constraints */
 #layout-root.layout-mode-split-h,
 #layout-root.layout-mode-split-v {
   height: 100vh;
   max-height: 100vh;
   overflow: hidden;
+  display: grid;
+}
+
+/* HORIZONTAL split (left | divider | right) */
+#layout-root.layout-mode-split-h {
+  grid-template-columns: var(--split-left, 50%) 6px 1fr;
+  grid-template-rows: 1fr;
+}
+
+/* VERTICAL split (top / divider / bottom) */
+#layout-root.layout-mode-split-v {
+  grid-template-rows: var(--split-top, 50%) 6px 1fr;
+  grid-template-columns: 1fr;
+}
+
+/* Panes (both modes): allow internal scroll, prevent grid-item overflow */
+#layout-root.layout-mode-split-h .pane,
+#layout-root.layout-mode-split-v .pane {
+  overflow: auto;
+  min-width: 0;
+  min-height: 0;
+  box-sizing: border-box;
+}
+#layout-root.layout-mode-split-h .pane[hidden],
+#layout-root.layout-mode-split-v .pane[hidden] { display: none; }
+
+/* Panes inner container: don't fight max-width constraint */
+#layout-root.layout-mode-split-h .pane .container,
+#layout-root.layout-mode-split-v .pane .container {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* Tab-out's dashboard-columns: force single-column inside narrow split pane */
+#layout-root.layout-mode-split-h .dashboard-columns,
+#layout-root.layout-mode-split-v .dashboard-columns {
+  flex-direction: column;
+}
+#layout-root.layout-mode-split-h .dashboard-columns .active-section,
+#layout-root.layout-mode-split-v .dashboard-columns .active-section {
+  min-width: 0;
+}
+#layout-root.layout-mode-split-h .deferred-column,
+#layout-root.layout-mode-split-v .deferred-column {
+  width: 100%;
+  position: static;
+}
+
+/* Divider: filled-track + slightly darker than #e5e5e5 for cream-background visibility */
+#layout-root.layout-mode-split-h #layout-divider,
+#layout-root.layout-mode-split-v #layout-divider {
+  background: #d4d4d4;
+  transition: background 0.15s;
+  border: none;
+}
+#layout-root.layout-mode-split-h #layout-divider {
+  cursor: col-resize;
+  /* DOM order: tabs, divider, todos. Grid places them in columns 1, 2, 3 naturally. */
+}
+#layout-root.layout-mode-split-v #layout-divider {
+  cursor: row-resize;
+}
+#layout-root.layout-mode-split-h #layout-divider:hover,
+#layout-root.layout-mode-split-v #layout-divider:hover,
+#layout-root.layout-mode-split-h #layout-divider.dragging,
+#layout-root.layout-mode-split-v #layout-divider.dragging {
+  background: #8b5cf6;
 }
