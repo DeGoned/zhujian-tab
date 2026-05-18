@@ -1,5 +1,6 @@
 import { listTodos, listTodayTodos, createTodo } from './todos.js'
-import { listProjects } from './projects.js'
+import { listProjects, searchProjects, createProject } from './projects.js'
+import { parseTodoInput } from './input-parser.js'
 
 const $ = (id) => document.getElementById(id)
 
@@ -58,9 +59,18 @@ export function wireTodosInput() {
   if (!input) return
   input.addEventListener('keydown', async (e) => {
     if (e.key !== 'Enter') return
-    const text = input.value.trim()
-    if (!text) return
-    await createTodo({ text })  // 无 # 解析，纯文本（Task 3.3 加 #）
+    const raw = input.value
+    if (!raw.trim()) return
+    const { text, projectName } = parseTodoInput(raw)
+    let projectId = null
+    if (projectName) {
+      const matches = await searchProjects(projectName)
+      const exact = matches.find(p => p.name.toLowerCase() === projectName.toLowerCase())
+      const p = exact ?? await createProject({ name: projectName })
+      projectId = p.id
+    }
+    if (!text) return  // 只有 # 没有文本时不创建（用户多半在打字中途）
+    await createTodo({ text, projectId })
     input.value = ''
     await renderTodosView()
     input.focus()
