@@ -1,4 +1,4 @@
-import { listTodos, listTodayTodos } from './todos.js'
+import { listTodos, listTodayTodos, createTodo } from './todos.js'
 import { listProjects } from './projects.js'
 
 const $ = (id) => document.getElementById(id)
@@ -51,4 +51,18 @@ function renderProjectCard(p, todos) {
 
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]))
+}
+
+export function wireTodosInput() {
+  const input = document.getElementById('todos-input')
+  if (!input) return
+  input.addEventListener('keydown', async (e) => {
+    if (e.key !== 'Enter') return
+    const text = input.value.trim()
+    if (!text) return
+    await createTodo({ text })  // 无 # 解析，纯文本（Task 3.3 加 #）
+    input.value = ''
+    await renderTodosView()
+    input.focus()
+  })
 }

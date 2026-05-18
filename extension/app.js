@@ -17,7 +17,7 @@
 
 import { showToast, playCloseSound, shootConfetti, setSoundEnabled } from './ui.js'
 import { getSettings } from './settings.js'
-import { renderTodosView } from './todos-view.js'
+import { renderTodosView, wireTodosInput } from './todos-view.js'
 
 
 /* ----------------------------------------------------------------
@@ -1367,5 +1367,6 @@ document.addEventListener('input', async (e) => {
 ;(async () => {
   await initSettingsBeforeRender()
   await renderDashboard()
-  await renderTodosView()  // NEW
+  await renderTodosView()
+  wireTodosInput()
 })()
