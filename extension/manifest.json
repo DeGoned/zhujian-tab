@@ -3,9 +3,19 @@
   "name": "Tab Out + Todo",
   "version": "0.1.0",
   "description": "Tab Out 基础上扩展待办管理：深度绑定 tab、今日/项目双 view、全局快捷键捕获。",
-  "permissions": ["tabs", "activeTab", "storage"],
+  "permissions": ["tabs", "activeTab", "storage", "scripting"],
+  "host_permissions": ["<all_urls>"],
   "chrome_url_overrides": { "newtab": "index.html" },
-  "background": { "service_worker": "background.js" },
+  "background": { "service_worker": "background.js", "type": "module" },
+  "commands": {
+    "open-capture": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+Space",
+        "mac": "Command+Shift+Space"
+      },
+      "description": "打开 todo 捕获浮窗"
+    }
+  },
   "action": {
     "default_title": "Tab Out + Todo",
     "default_icon": {
