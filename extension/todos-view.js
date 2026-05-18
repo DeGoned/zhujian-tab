@@ -62,6 +62,9 @@ async function renderProjects() {
 
 function renderTodoLi(t, done = false) {
   const checkbox = done ? '☑' : '☐'
+  const addBindBtn = !done
+    ? `<button class="t-add-bind" data-id="${t.id}" title="加 tab" aria-label="加 tab">🔗 +</button>`
+    : ''
   const bindingsHtml = (t.boundUrls && t.boundUrls.length > 0)
     ? `<ul class="bindings">${
         t.boundUrls.map(url => {
@@ -77,7 +80,11 @@ function renderTodoLi(t, done = false) {
         }).join('')
       }</ul>`
     : ''
-  return `<li class="${done ? 'done' : ''}" data-id="${t.id}">${checkbox} ${escapeHtml(t.text)}${bindingsHtml}</li>`
+  return `<li class="${done ? 'done' : ''}" data-id="${t.id}">
+    <span class="t-text">${checkbox} ${escapeHtml(t.text)}</span>
+    ${addBindBtn}
+    ${bindingsHtml}
+  </li>`
 }
 
 function escapeAttr(s) {
@@ -167,6 +174,14 @@ export function wireTodosView() {
           }
         })
       } catch (_) {}
+      return
+    }
+    // + tab button on todo
+    if (e.target.classList.contains('t-add-bind')) {
+      e.stopPropagation()
+      const id = e.target.dataset.id
+      const { openAddTabPopover } = await import('./binding.js')
+      openAddTabPopover(id, e.target)
       return
     }
     // Unbind on .b-unbind click

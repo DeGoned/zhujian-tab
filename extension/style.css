@@ -1578,3 +1578,27 @@ footer { animation: fadeUp 0.5s ease 0.65s both; }
 }
 .bind-pop-list .item:hover { background: #f5f5f5; }
 .bind-pop-list .empty { padding: 8px; font-size: 11px; opacity: 0.5; }
+
+/* ===== Todo "+ tab" button (Task 5.4) ===== */
+.todo-list li {
+  position: relative;
+}
+.t-add-bind {
+  opacity: 0;
+  background: white;
+  border: 1px dashed #ccc;
+  border-radius: 10px;
+  padding: 1px 7px;
+  font-size: 10px;
+  cursor: pointer;
+  color: #8b5cf6;
+  margin-left: 6px;
+  transition: opacity 0.15s, border-color 0.15s;
+  vertical-align: middle;
+  font-family: 'DM Sans', sans-serif;
+}
+.todo-list li:hover .t-add-bind { opacity: 1; }
+.t-add-bind:hover { border-color: #8b5cf6; border-style: solid; }
+.t-text {
+  /* Make text+checkbox a single inline unit so + tab sits next to it */
+}

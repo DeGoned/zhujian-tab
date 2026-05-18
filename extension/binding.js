@@ -160,6 +160,74 @@ export function closeBindPopover() {
   }
 }
 
+/**
+ * 打开"给 todo 加 tab"的 popover。
+ * 列出当前所有打开的 tabs，排除已经绑过的，点击即添加。
+ * @param {string} todoId
+ * @param {HTMLElement} anchorEl
+ */
+export async function openAddTabPopover(todoId, anchorEl) {
+  const pop = document.getElementById('bindPopover')
+  if (!pop) return
+
+  const rect = anchorEl.getBoundingClientRect()
+  pop.style.left = `${Math.min(rect.right + 8, window.innerWidth - 296)}px`
+  pop.style.top = `${Math.max(8, rect.top)}px`
+  pop.hidden = false
+
+  // Different mode: hide input, change divider text
+  const input = document.getElementById('bindPopInput')
+  input.hidden = true
+  input.value = ''
+  document.querySelector('.bind-pop-divider').textContent = '从已打开 tab 中选'
+
+  // Fetch open tabs
+  const tabs = await new Promise(resolve => {
+    try { chrome.tabs.query({}, (ts) => resolve(ts || [])) } catch { resolve([]) }
+  })
+
+  const all = await listTodos()
+  const todo = all.find(t => t.id === todoId)
+  if (!todo) return closeBindPopover()
+  const already = new Set(todo.boundUrls || [])
+
+  const candidates = tabs.filter(t => t.url && !already.has(t.url))
+  const listEl = document.getElementById('bindPopExisting')
+  listEl.innerHTML = candidates.length === 0
+    ? `<div class="empty">没有可绑的 tab</div>`
+    : candidates.map(t => {
+        const title = (t.title || t.url).trim()
+        return `<div class="item" data-url="${escapeAttr(t.url)}" data-title="${escapeAttr(title)}">${_escapeHtml(title)}</div>`
+      }).join('')
+
+  listEl.onclick = async (e) => {
+    const item = e.target.closest('.item')
+    if (!item) return
+    const url = item.dataset.url
+    const title = item.dataset.title || url
+    await rememberUrlTitle(url, title)
+    await updateTodo(todoId, { boundUrls: [...(todo.boundUrls || []), url] })
+    closeBindPopover()
+    const { renderTodosView } = await import('./todos-view.js')
+    await renderTodosView()
+    const { showToast } = await import('./ui.js')
+    showToast('已加绑')
+  }
+
+  setTimeout(() => {
+    if (_popOutsideHandler) document.removeEventListener('mousedown', _popOutsideHandler)
+    _popOutsideHandler = (ev) => {
+      if (pop.hidden) return
+      if (!pop.contains(ev.target)) closeBindPopover()
+    }
+    document.addEventListener('mousedown', _popOutsideHandler, { once: true })
+  }, 0)
+}
+
+function escapeAttr(s) {
+  return String(s).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]))
+}
+
 function _escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]))
 }
