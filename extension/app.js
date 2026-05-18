@@ -17,7 +17,7 @@
 
 import { showToast, playCloseSound, shootConfetti, setSoundEnabled } from './ui.js'
 import { getSettings } from './settings.js'
-import { renderTodosView, wireTodosInput, wireProjectControls } from './todos-view.js'
+import { renderTodosView, wireTodosInput, wireProjectControls, wireTodosView } from './todos-view.js'
 import { applyLayout, wireToggleBtn, wireDivider } from './layout.js'
 import { wireSettingsPanel } from './settings-panel.js'
 import { onStorageChanged, KEYS } from './storage.js'
@@ -1373,6 +1373,7 @@ document.addEventListener('input', async (e) => {
   await renderTodosView()
   wireTodosInput()
   wireProjectControls()
+  wireTodosView()         // NEW
   wireToggleBtn()         // NEW
   wireSettingsPanel()      // NEW
   wireDivider()            // NEW

@@ -2,10 +2,38 @@ import { listTodos, listTodayTodos, createTodo } from './todos.js'
 import { listProjects, searchProjects, createProject } from './projects.js'
 import { parseTodoInput } from './input-parser.js'
 import { attachProjectDropdown } from './project-dropdown.js'
+import { getStorage, KEYS } from './storage.js'
 
 const $ = (id) => document.getElementById(id)
 
+// Pre-loaded per render: which URLs are currently open in a Chrome tab
+let _openUrls = new Set()
+// Pre-loaded per render: title cache (sync access during rendering)
+let _urlTitlesCache = {}
+
+async function refreshOpenUrls() {
+  // chrome.tabs.query is async via callback; promisify
+  _openUrls = await new Promise((resolve) => {
+    try {
+      chrome.tabs.query({}, (tabs) => {
+        resolve(new Set((tabs || []).map(t => t.url).filter(Boolean)))
+      })
+    } catch (e) {
+      resolve(new Set())
+    }
+  })
+}
+
+async function preloadUrlTitles() {
+  _urlTitlesCache = await getStorage(KEYS.urlTitles, {})
+}
+
+function syncUrlTitle(url) {
+  return _urlTitlesCache[url] || url
+}
+
 export async function renderTodosView() {
+  await Promise.all([refreshOpenUrls(), preloadUrlTitles()])
   await renderToday()
   await renderProjects()
 }
@@ -34,7 +62,26 @@ async function renderProjects() {
 
 function renderTodoLi(t, done = false) {
   const checkbox = done ? '☑' : '☐'
-  return `<li class="${done ? 'done' : ''}" data-id="${t.id}">${checkbox} ${escapeHtml(t.text)}</li>`
+  const bindingsHtml = (t.boundUrls && t.boundUrls.length > 0)
+    ? `<ul class="bindings">${
+        t.boundUrls.map(url => {
+          const open = _openUrls.has(url)
+          const dot = open ? '🟢' : '⚪'
+          const title = syncUrlTitle(url)
+          const cls = open ? 'b-open' : 'b-closed'
+          return `<li class="${cls}" data-url="${escapeAttr(url)}">
+            <span class="b-dot">${dot}</span>
+            <span class="b-title" title="${escapeAttr(url)}">${escapeHtml(title)}</span>
+            <button class="b-unbind" title="解绑" aria-label="解绑">×</button>
+          </li>`
+        }).join('')
+      }</ul>`
+    : ''
+  return `<li class="${done ? 'done' : ''}" data-id="${t.id}">${checkbox} ${escapeHtml(t.text)}${bindingsHtml}</li>`
+}
+
+function escapeAttr(s) {
+  return String(s).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]))
 }
 
 function renderProjectCard(p, todos) {
@@ -93,5 +140,49 @@ export function wireProjectControls() {
     }
     await createProject({ name })
     await renderTodosView()
+  })
+}
+
+/**
+ * Wire up event delegation for todo list actions:
+ * - Click .b-title  → jump to existing tab or open new
+ * - Click .b-unbind → remove URL from todo's boundUrls
+ *
+ * Must be called once after DOM is ready.
+ */
+export function wireTodosView() {
+  document.addEventListener('click', async (e) => {
+    // Jump-to-tab on .b-title click
+    if (e.target.classList.contains('b-title')) {
+      const li = e.target.closest('li[data-url]')
+      if (!li) return
+      const url = li.dataset.url
+      try {
+        chrome.tabs.query({ url }, (tabs) => {
+          if (tabs && tabs.length > 0) {
+            chrome.tabs.update(tabs[0].id, { active: true })
+            if (tabs[0].windowId) chrome.windows.update(tabs[0].windowId, { focused: true })
+          } else {
+            chrome.tabs.create({ url })
+          }
+        })
+      } catch (_) {}
+      return
+    }
+    // Unbind on .b-unbind click
+    if (e.target.classList.contains('b-unbind')) {
+      const liUrl = e.target.closest('li[data-url]')
+      const liTodo = e.target.closest('li[data-id]')
+      if (!liUrl || !liTodo) return
+      const url = liUrl.dataset.url
+      const todoId = liTodo.dataset.id
+      const { updateTodo, listTodos } = await import('./todos.js')
+      const all = await listTodos()
+      const t = all.find(x => x.id === todoId)
+      if (!t) return
+      await updateTodo(todoId, { boundUrls: (t.boundUrls || []).filter(u => u !== url) })
+      await renderTodosView()
+      return
+    }
   })
 }

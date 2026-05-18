@@ -1466,3 +1466,53 @@ footer { animation: fadeUp 0.5s ease 0.65s both; }
 #layout-root.layout-mode-split-v #layout-divider.dragging {
   background: #8b5cf6;
 }
+
+/* ===== Todo bindings (Task 5.2) ===== */
+.bindings {
+  list-style: none;
+  padding: 4px 0 0 22px;
+  margin: 4px 0 0;
+}
+.bindings li {
+  font-size: 11px;
+  padding: 3px 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  line-height: 1.4;
+}
+.bindings .b-dot {
+  font-size: 9px;
+  flex-shrink: 0;
+}
+.bindings .b-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-decoration-color: #bbb;
+  text-underline-offset: 2px;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.bindings .b-title:hover {
+  color: #8b5cf6;
+  text-decoration-color: #8b5cf6;
+}
+.bindings li.b-closed { opacity: 0.55; }
+.bindings .b-unbind {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  opacity: 0;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0 4px;
+  color: #999;
+  transition: opacity 0.15s;
+}
+.bindings li:hover .b-unbind { opacity: 0.5; }
+.bindings .b-unbind:hover { opacity: 1 !important; color: #ef4444; }
