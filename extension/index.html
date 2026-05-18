@@ -158,6 +158,23 @@
   <div id="layout-divider" hidden></div>
 </div><!-- end #layout-root -->
 
+<button id="settingsBtn" class="settings-btn" title="设置" aria-label="设置">⚙</button>
+<div id="settingsPanel" class="settings-panel" hidden>
+  <h3>布局模式</h3>
+  <label><input type="radio" name="layoutMode" value="toggle"> 整页切换（默认）</label>
+  <label><input type="radio" name="layoutMode" value="split-h"> 左右分区</label>
+  <label><input type="radio" name="layoutMode" value="split-v"> 上下分区</label>
+
+  <h3>声音</h3>
+  <label><input type="checkbox" id="cbSound"> 勾选完成 / 关 tab 时播放音效</label>
+
+  <h3>快捷键</h3>
+  <p class="hint">捕获 todo: <kbd>Cmd+Shift+Space</kbd><br>→ 在 <a href="chrome://extensions/shortcuts" target="_blank" rel="noreferrer">chrome://extensions/shortcuts</a> 修改</p>
+
+  <h3>关于</h3>
+  <p class="hint">Tab Out + Todo v0.1.0<br>Based on tab-out by Zara</p>
+</div>
+
 <!-- ================================================================
      TOAST — floats above everything, used for action confirmations
      Hidden by default via CSS (opacity:0, translateY)

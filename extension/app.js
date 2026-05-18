@@ -19,6 +19,7 @@ import { showToast, playCloseSound, shootConfetti, setSoundEnabled } from './ui.
 import { getSettings } from './settings.js'
 import { renderTodosView, wireTodosInput, wireProjectControls } from './todos-view.js'
 import { applyLayout, wireToggleBtn } from './layout.js'
+import { wireSettingsPanel } from './settings-panel.js'
 
 
 /* ----------------------------------------------------------------
@@ -1372,5 +1373,6 @@ document.addEventListener('input', async (e) => {
   wireTodosInput()
   wireProjectControls()
   wireToggleBtn()         // NEW
+  wireSettingsPanel()      // NEW
   await applyLayout()     // NEW — apply current mode (default toggle, tabs visible)
 })()
