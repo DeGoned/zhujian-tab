@@ -91,3 +91,68 @@ chrome.tabs.onUpdated.addListener(() => {
 
 // Run once immediately when the service worker first loads
 updateBadge();
+
+// ============================================================
+// Tab Out + Todo — global hotkey capture flow
+// ============================================================
+
+chrome.commands.onCommand.addListener(async (command) => {
+  if (command !== 'open-capture') return
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
+    if (!tab || !tab.id) return
+    // Skip restricted URLs (chrome://, chrome-extension://, edge://, about:, etc.)
+    if (!tab.url || /^(chrome|edge|about|chrome-extension|moz-extension|brave|opera|view-source):/i.test(tab.url)) {
+      // Cannot inject into restricted page — user must be on a normal web page
+      console.info('Tab Out: cannot inject into restricted page', tab.url)
+      return
+    }
+    await chrome.scripting.insertCSS({
+      target: { tabId: tab.id },
+      files: ['content/capture-overlay.css'],
+    })
+    await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      files: ['content/capture-overlay.js'],
+    })
+  } catch (e) {
+    console.warn('Tab Out: inject capture overlay failed', e)
+  }
+})
+
+// Handle capture submissions from content script
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (!msg || msg.type !== 'capture') return false
+  ;(async () => {
+    try {
+      const [{ createTodo }, { searchProjects, createProject }, { rememberUrlTitle }, { parseTodoInput }] = await Promise.all([
+        import(chrome.runtime.getURL('todos.js')),
+        import(chrome.runtime.getURL('projects.js')),
+        import(chrome.runtime.getURL('binding.js')),
+        import(chrome.runtime.getURL('input-parser.js')),
+      ])
+      const { text, projectName } = parseTodoInput(msg.text || '')
+      let projectId = null
+      if (projectName) {
+        const m = await searchProjects(projectName)
+        const exact = m.find(p => p.name.toLowerCase() === projectName.toLowerCase())
+        projectId = (exact ?? await createProject({ name: projectName })).id
+      }
+      if (!text) {
+        sendResponse({ ok: false, reason: 'empty after parse' })
+        return
+      }
+      if (msg.url) await rememberUrlTitle(msg.url, msg.title || '')
+      await createTodo({
+        text,
+        projectId,
+        boundUrls: msg.url ? [msg.url] : [],
+      })
+      sendResponse({ ok: true })
+    } catch (e) {
+      console.warn('Tab Out: capture handler failed', e)
+      sendResponse({ ok: false, reason: String(e) })
+    }
+  })()
+  return true  // async response
+})
