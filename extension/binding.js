@@ -127,12 +127,22 @@ export async function openBindPopover(url, title, anchorEl) {
     showToast('已加到 todos')
   }
 
-  // List existing pending todos for "or add to existing"
+  // List existing pending todos for "or add to existing" — filterable as user types
   const all = (await listTodos()).filter(t => t.status === 'pending')
   const listEl = document.getElementById('bindPopExisting')
-  listEl.innerHTML = all.length === 0
-    ? `<div class="empty">无现有待办</div>`
-    : all.map(t => `<div class="item" data-id="${t.id}">${_escapeHtml(t.text)}</div>`).join('')
+
+  function renderExistingList(filter = '') {
+    const f = filter.trim().toLowerCase()
+    const matched = f ? all.filter(t => (t.text || '').toLowerCase().includes(f)) : all
+    listEl.innerHTML = matched.length === 0
+      ? `<div class="empty">${f ? '无匹配 todo（回车将新建）' : '无现有待办'}</div>`
+      : matched.map(t => `<div class="item" data-id="${t.id}">${_escapeHtml(t.text)}</div>`).join('')
+  }
+  renderExistingList()  // initial full list
+
+  // Filter as user types
+  input.oninput = (e) => renderExistingList(e.target.value)
+
   listEl.onclick = async (e) => {
     const item = e.target.closest('.item')
     if (!item) return
@@ -274,11 +284,11 @@ export async function closeTabWithGuard(tabId, url, doClose) {
     <p class="muted" style="margin-top: 12px;">先标完成？还是把绑定移除直接关？</p>
   `
   const choice = await showModal({
-    title: '先处理这件事？',
+    title: '该 tab 已关联 todo，想如何处理？',
     bodyHtml,
     buttons: [
       { label: `✓ 全部标完成（${todos.length}）`, kind: 'primary', value: 'done' },
-      { label: '关 todo 不管', kind: 'secondary', value: 'ignore' },
+      { label: '仅关闭 tab', kind: 'secondary', value: 'ignore' },
       { label: '取消', kind: 'ghost', value: 'cancel' },
     ],
   })
@@ -331,11 +341,11 @@ export async function closeAllTabsWithGuard(tabsToClose, doCloseAll) {
     <ul>${todos.map(t => `<li>☐ ${_escapeHtml(t.text)}</li>`).join('')}</ul>
   `
   const choice = await showModal({
-    title: '批量关闭前先处理？',
+    title: '这些 tab 已关联 todo，想如何处理？',
     bodyHtml,
     buttons: [
       { label: `✓ 全部标完成（${todos.length}）`, kind: 'primary', value: 'done' },
-      { label: '关 todo 不管', kind: 'secondary', value: 'ignore' },
+      { label: '仅关闭 tab', kind: 'secondary', value: 'ignore' },
       { label: '取消', kind: 'ghost', value: 'cancel' },
     ],
   })
