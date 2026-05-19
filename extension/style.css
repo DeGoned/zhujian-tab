@@ -1695,11 +1695,20 @@ footer { animation: fadeUp 0.5s ease 0.65s both; }
 .tabout-modal .btn-ghost:hover { color: #333; background: #f5f5f5; }
 
 /* ===== Closure toast (Task 7.3) ===== */
-.closure-toast {
+#closure-toast-stack {
   position: fixed;
-  bottom: 24px;
   right: 24px;
+  bottom: 24px;
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 10px;
   z-index: 500;
+  pointer-events: none;
+}
+#closure-toast-stack > .closure-toast {
+  pointer-events: auto;
+}
+.closure-toast {
   background: #1a1a1a;
   color: white;
   padding: 12px 16px;

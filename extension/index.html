@@ -168,6 +168,11 @@
   <h3>声音</h3>
   <label><input type="checkbox" id="cbSound"> 勾选完成 / 关 tab 时播放音效</label>
 
+  <h3>浏览器原生关 tab 时</h3>
+  <label><input type="radio" name="nativeCloseAction" value="keep"> 保留绑定（默认，关闭的 tab 显示为 ⚪）</label>
+  <label><input type="radio" name="nativeCloseAction" value="remove-binding"> 自动移除绑定（todo 保留，URL 从 boundUrls 移除）</label>
+  <label><input type="radio" name="nativeCloseAction" value="smart-complete"> 1:1 绑定时自动完成 todo（多对多则保留）</label>
+
   <h3>快捷键</h3>
   <p class="hint">捕获 todo: <kbd>Cmd+Shift+Space</kbd><br>→ 在 <a href="chrome://extensions/shortcuts" target="_blank" rel="noreferrer">chrome://extensions/shortcuts</a> 修改</p>
 

@@ -1421,29 +1421,52 @@ chrome.runtime.onMessage.addListener((msg, _sender, _sendResponse) => {
       const next = [...seen, msg.closureId].slice(-50)
       await chrome.storage.local.set({ taboutShownClosures: next })
     } catch (_) {}
-    showClosureToast(msg.url, msg.title, msg.todoIds, msg.todoTexts)
+    showClosureToast(msg.url, msg.title, msg.todoIds, msg.todoTexts, msg.actionTaken, msg.completedTodoIds)
   })()
   return false
 })
 
-function showClosureToast(url, title, todoIds, todoTexts) {
-  // Remove any existing closure toast (only one at a time)
-  document.querySelectorAll('.closure-toast').forEach(el => el.remove())
+function _getOrCreateToastStack() {
+  let stack = document.getElementById('closure-toast-stack')
+  if (!stack) {
+    stack = document.createElement('div')
+    stack.id = 'closure-toast-stack'
+    document.body.appendChild(stack)
+  }
+  return stack
+}
+
+function showClosureToast(url, title, todoIds, todoTexts, actionTaken, completedTodoIds) {
+  const stack = _getOrCreateToastStack()
 
   const el = document.createElement('div')
   el.className = 'closure-toast'
-  const titleStr = title || url
+
   const todoStr = todoTexts.length === 1
     ? `「${todoTexts[0]}」`
     : `${todoTexts.length} 个 todo`
+
+  let mainText
+  if (actionTaken === 'completed') {
+    const n = (completedTodoIds || []).length
+    mainText = `🎉 关闭的 tab 关联了 ${n} 个 todo，已自动完成`
+  } else if (actionTaken === 'removed') {
+    mainText = `🔗 关闭的 tab 已从 ${todoIds.length} 个 todo 上解绑`
+  } else {
+    mainText = `🔗 刚关闭的 tab 关联 ${todoStr}`
+  }
+
+  const markDoneBtn = actionTaken === 'completed'
+    ? ''
+    : `<button class="ct-btn ct-btn-primary" data-action="ct-mark-done">✓ 标完成</button>`
+
   el.innerHTML = `
-    <div class="ct-icon">🔗</div>
-    <div class="ct-text">刚关闭的 tab 关联 ${todoStr}</div>
+    <div class="ct-text">${mainText}</div>
     <button class="ct-btn" data-action="ct-reopen">↶ 撤销关闭</button>
-    <button class="ct-btn ct-btn-primary" data-action="ct-mark-done">✓ 标完成</button>
+    ${markDoneBtn}
     <button class="ct-btn ct-btn-ghost" data-action="ct-dismiss" aria-label="dismiss">×</button>
   `
-  document.body.appendChild(el)
+  stack.appendChild(el)
 
   let dismissed = false
   function dismiss() {
@@ -1478,8 +1501,8 @@ function showClosureToast(url, title, todoIds, todoTexts) {
     }
   })
 
-  // Auto-dismiss after 5 seconds
-  setTimeout(dismiss, 5000)
+  // Auto-dismiss after 10 seconds
+  setTimeout(dismiss, 10000)
 }
 
 

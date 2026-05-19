@@ -1,8 +1,9 @@
 // Tab Out + Todo extensions — static imports for service worker (MV3 module)
-import { createTodo } from './todos.js'
+import { createTodo, listTodos, updateTodo, completeTodo } from './todos.js'
 import { searchProjects, createProject } from './projects.js'
 import { rememberUrlTitle } from './binding.js'
 import { parseTodoInput } from './input-parser.js'
+import { getSettings } from './settings.js'
 
 /**
  * background.js — Service Worker for Badge Updates
@@ -154,6 +155,39 @@ chrome.tabs.onRemoved.addListener(async (tabId, _removeInfo) => {
   const todos = await getTodosBoundToUrl(meta.url)
   if (todos.length === 0) return
 
+  // Apply the configured nativeCloseAction
+  const settings = await getSettings()
+  const action = settings.nativeCloseAction || 'keep'
+
+  let actionTaken = null  // 'removed' | 'completed' | null
+  const completedTodoIds = []
+
+  if (action === 'remove-binding') {
+    // Remove this URL from each bound todo's boundUrls
+    for (const t of todos) {
+      const newBound = (t.boundUrls || []).filter(u => u !== meta.url)
+      await updateTodo(t.id, { boundUrls: newBound })
+    }
+    actionTaken = 'removed'
+  } else if (action === 'smart-complete') {
+    // For each bound todo: if this is its only URL AND no other pending todo has this URL → complete it
+    const allTodos = await listTodos()
+    for (const t of todos) {
+      const todoHasOnlyThisUrl = (t.boundUrls || []).length === 1 && t.boundUrls[0] === meta.url
+      const otherTodosWithUrl = allTodos.filter(other =>
+        other.id !== t.id &&
+        other.status === 'pending' &&
+        (other.boundUrls || []).includes(meta.url)
+      )
+      if (todoHasOnlyThisUrl && otherTodosWithUrl.length === 0) {
+        await completeTodo(t.id)
+        completedTodoIds.push(t.id)
+      }
+    }
+    if (completedTodoIds.length > 0) actionTaken = 'completed'
+  }
+  // 'keep' = no action, just broadcast toast (existing behavior)
+
   // Broadcast a single closureId to all open new tab pages.
   // The dedupe mechanism in app.js ensures only one page shows the toast.
   const closureId = `close-${tabId}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
@@ -164,6 +198,8 @@ chrome.tabs.onRemoved.addListener(async (tabId, _removeInfo) => {
     title: meta.title,
     todoIds: todos.map(t => t.id),
     todoTexts: todos.map(t => t.text),
+    actionTaken,
+    completedTodoIds,
   }
   // chrome.runtime.sendMessage broadcasts to ALL extension contexts
   // (new tab pages, popup, options page) — they receive via chrome.runtime.onMessage.

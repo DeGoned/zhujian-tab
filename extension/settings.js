@@ -6,6 +6,7 @@ export const DEFAULT_SETTINGS = {
   splitRatio: 0.5,
   soundEnabled: true,
   hotkeyEnabled: true,
+  nativeCloseAction: 'keep', // 'remove-binding' | 'keep' | 'smart-complete'
 }
 
 export async function getSettings() {

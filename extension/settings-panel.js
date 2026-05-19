@@ -40,6 +40,14 @@ export function wireSettingsPanel() {
       setSoundEnabled(e.target.checked)
     })
   }
+
+  // nativeCloseAction radio buttons
+  document.querySelectorAll('input[name="nativeCloseAction"]').forEach(r => {
+    r.addEventListener('change', async () => {
+      if (!r.checked) return
+      await updateSettings({ nativeCloseAction: r.value })
+    })
+  })
 }
 
 async function refreshPanelState() {
@@ -49,4 +57,7 @@ async function refreshPanelState() {
   })
   const cb = document.getElementById('cbSound')
   if (cb) cb.checked = s.soundEnabled
+  document.querySelectorAll('input[name="nativeCloseAction"]').forEach(r => {
+    r.checked = r.value === s.nativeCloseAction
+  })
 }
