@@ -157,23 +157,21 @@ chrome.tabs.onRemoved.addListener(async (tabId, _removeInfo) => {
   // Broadcast a single closureId to all open new tab pages.
   // The dedupe mechanism in app.js ensures only one page shows the toast.
   const closureId = `close-${tabId}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+  const payload = {
+    type: 'tab-closed-while-bound',
+    closureId,
+    url: meta.url,
+    title: meta.title,
+    todoIds: todos.map(t => t.id),
+    todoTexts: todos.map(t => t.text),
+  }
+  // chrome.runtime.sendMessage broadcasts to ALL extension contexts
+  // (new tab pages, popup, options page) — they receive via chrome.runtime.onMessage.
+  // Previously used chrome.tabs.sendMessage which only delivers to content scripts.
   try {
-    const allTabs = await chrome.tabs.query({})
-    const payload = {
-      type: 'tab-closed-while-bound',
-      closureId,
-      url: meta.url,
-      title: meta.title,
-      todoIds: todos.map(t => t.id),
-      todoTexts: todos.map(t => t.text),
-    }
-    for (const t of allTabs) {
-      if (t.id && t.url && t.url.startsWith(chrome.runtime.getURL(''))) {
-        chrome.tabs.sendMessage(t.id, payload).catch(() => {})  // ignore tabs without listener
-      }
-    }
+    await chrome.runtime.sendMessage(payload)
   } catch (e) {
-    console.warn('Tab Out: closure broadcast failed', e)
+    // Fine if no listeners are present (e.g. no new tab page open).
   }
 })
 
