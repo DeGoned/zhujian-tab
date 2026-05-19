@@ -87,11 +87,19 @@ export async function openBindPopover(url, title, anchorEl) {
   const pop = document.getElementById('bindPopover')
   if (!pop) return
 
-  // Position next to anchor
-  const rect = anchorEl.getBoundingClientRect()
-  pop.style.left = `${Math.min(rect.right + 8, window.innerWidth - 296)}px`
-  pop.style.top = `${Math.max(8, rect.top)}px`
-  pop.hidden = false
+  // Position popover next to anchor, clamped to viewport
+  const anchorRect = anchorEl.getBoundingClientRect()
+  pop.hidden = false  // must un-hide before measuring
+  // Initial position next to anchor
+  pop.style.left = `${Math.min(anchorRect.right + 8, window.innerWidth - 296)}px`
+  pop.style.top = `${Math.max(8, anchorRect.top)}px`
+  // Force layout to measure popover height
+  const popRect = pop.getBoundingClientRect()
+  const popH = popRect.height || 320  // fallback estimate
+  const maxTop = window.innerHeight - popH - 8
+  if (popRect.top > maxTop) {
+    pop.style.top = `${Math.max(8, maxTop)}px`
+  }
 
   // Reset state (in case popover was previously opened by Task 5.4 mode)
   const input = document.getElementById('bindPopInput')
@@ -184,10 +192,19 @@ export async function openAddTabPopover(todoId, anchorEl) {
   const pop = document.getElementById('bindPopover')
   if (!pop) return
 
-  const rect = anchorEl.getBoundingClientRect()
-  pop.style.left = `${Math.min(rect.right + 8, window.innerWidth - 296)}px`
-  pop.style.top = `${Math.max(8, rect.top)}px`
-  pop.hidden = false
+  // Position popover next to anchor, clamped to viewport
+  const anchorRect = anchorEl.getBoundingClientRect()
+  pop.hidden = false  // must un-hide before measuring
+  // Initial position next to anchor
+  pop.style.left = `${Math.min(anchorRect.right + 8, window.innerWidth - 296)}px`
+  pop.style.top = `${Math.max(8, anchorRect.top)}px`
+  // Force layout to measure popover height
+  const popRect = pop.getBoundingClientRect()
+  const popH = popRect.height || 320  // fallback estimate
+  const maxTop = window.innerHeight - popH - 8
+  if (popRect.top > maxTop) {
+    pop.style.top = `${Math.max(8, maxTop)}px`
+  }
 
   // Search mode: input visible, repurposed as search box
   const input = document.getElementById('bindPopInput')
