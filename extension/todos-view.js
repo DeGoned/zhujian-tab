@@ -80,8 +80,12 @@ function renderTodoLi(t, done = false) {
         }).join('')
       }</ul>`
     : ''
+  const rolloverBadge = (!done && t.rolloverCount && t.rolloverCount > 0)
+    ? `<span class="rollover-badge ${t.rolloverCount >= 7 ? 'amber' : ''}" title="已拖延 ${t.rolloverCount} 天">+${t.rolloverCount}d</span>`
+    : ''
   return `<li class="${done ? 'done' : ''}" data-id="${t.id}">
     <span class="t-text">${checkbox} ${escapeHtml(t.text)}</span>
+    ${rolloverBadge}
     ${addBindBtn}
     ${bindingsHtml}
   </li>`

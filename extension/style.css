@@ -1757,3 +1757,24 @@ footer { animation: fadeUp 0.5s ease 0.65s both; }
   opacity: 0.5;
 }
 .closure-toast .ct-btn-ghost:hover { opacity: 1; background: none; }
+
+/* ===== Rollover badge (Phase 8 Task 8.2) ===== */
+.rollover-badge {
+  display: inline-block;
+  padding: 1px 7px;
+  font-size: 10px;
+  opacity: 0.75;
+  background: #f0f0f0;
+  color: #666;
+  border-radius: 9px;
+  margin-left: 6px;
+  vertical-align: middle;
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.rollover-badge.amber {
+  background: #fef3c7;
+  color: #92400e;
+  opacity: 1;
+}

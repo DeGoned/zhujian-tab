@@ -70,6 +70,45 @@ function isToday(ts) {
   return todayStr() === `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
 }
 
+function daysBetween(fromYmd, toYmd) {
+  if (!fromYmd) return 0
+  const [fy, fm, fd] = fromYmd.split('-').map(Number)
+  const [ty, tm, td] = toYmd.split('-').map(Number)
+  const from = new Date(fy, fm - 1, fd)
+  const to = new Date(ty, tm - 1, td)
+  return Math.round((to - from) / (1000 * 60 * 60 * 24))
+}
+
+/**
+ * Increment rolloverCount on pending todos whose lastRolloverDate is before today.
+ * Call once at page load. Idempotent within the same day.
+ *
+ * @returns {Promise<boolean>} true if any todo was updated
+ */
+export async function runDailyRollover() {
+  const today = todayStr()
+  const all = await listTodos()
+  let changed = false
+  for (const t of all) {
+    if (t.status !== 'pending') continue
+    if (!t.lastRolloverDate) {
+      // Legacy todo without rollover tracking — initialize to today
+      t.lastRolloverDate = today
+      changed = true
+      continue
+    }
+    if (t.lastRolloverDate === today) continue
+    const diff = daysBetween(t.lastRolloverDate, today)
+    if (diff > 0) {
+      t.rolloverCount = (t.rolloverCount || 0) + diff
+      t.lastRolloverDate = today
+      changed = true
+    }
+  }
+  if (changed) await setStorage(KEYS.todos, all)
+  return changed
+}
+
 /**
  * 返回今日 view：{ pending, done }
  * pending: pinnedToday OR (无项目 且 是今日新建 / rolloverCount>0)

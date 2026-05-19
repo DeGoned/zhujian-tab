@@ -18,6 +18,7 @@
 import { showToast, playCloseSound, shootConfetti, setSoundEnabled } from './ui.js'
 import { getSettings, updateSettings } from './settings.js'
 import { renderTodosView, wireTodosInput, wireProjectControls, wireTodosView } from './todos-view.js'
+import { runDailyRollover } from './todos.js'
 import { applyLayout, wireToggleBtn, wireDivider } from './layout.js'
 import { wireSettingsPanel } from './settings-panel.js'
 import { onStorageChanged, KEYS } from './storage.js'
@@ -1487,6 +1488,7 @@ function showClosureToast(url, title, todoIds, todoTexts) {
    ---------------------------------------------------------------- */
 ;(async () => {
   await initSettingsBeforeRender()
+  await runDailyRollover()  // bump rolloverCount for any pending todos that crossed midnight
   await renderDashboard()
   await renderTodosView()
   wireTodosInput()
