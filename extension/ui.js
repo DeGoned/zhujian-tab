@@ -220,6 +220,42 @@ export function showModal({ title, bodyHtml, buttons, dismissable = true }) {
   })
 }
 
+/**
+ * 显示一个底部居中、N 秒可撤销的 toast。
+ * @param {string} text
+ * @param {() => Promise<void>} onUndo  用户点撤销时调用
+ * @param {number} durationMs 默认 5000
+ */
+export function showUndoToast(text, onUndo, durationMs = 5000) {
+  const el = document.createElement('div')
+  el.className = 'undo-toast'
+  el.innerHTML = `
+    <span class="undo-text"></span>
+    <button type="button" class="undo-btn">↶ 撤销</button>
+  `
+  el.querySelector('.undo-text').textContent = text
+  document.body.appendChild(el)
+
+  let restored = false
+  let dismissTimer = null
+
+  function dismiss() {
+    if (!el.parentNode) return
+    el.classList.add('out')
+    setTimeout(() => el.remove(), 240)
+  }
+
+  el.querySelector('.undo-btn').addEventListener('click', async () => {
+    if (restored) return
+    restored = true
+    clearTimeout(dismissTimer)
+    try { await onUndo() } catch (_) {}
+    el.remove()
+  })
+
+  dismissTimer = setTimeout(() => { if (!restored) dismiss() }, durationMs)
+}
+
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]))
 }

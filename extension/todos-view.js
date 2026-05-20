@@ -65,6 +65,12 @@ function renderTodoLi(t, done = false) {
   const addBindBtn = !done
     ? `<button class="t-add-bind" data-id="${t.id}" title="加 tab" aria-label="加 tab">🔗 +</button>`
     : ''
+  const pinBtn = !done
+    ? `<button class="t-pin" data-id="${t.id}" data-pinned="${t.pinnedToday ? 'true' : 'false'}" title="${t.pinnedToday ? '取消挂今日' : '挂今日'}">${t.pinnedToday ? '⭐' : '☆'}</button>`
+    : ''
+  const delBtn = !done
+    ? `<button class="t-delete" data-id="${t.id}" title="删除">🗑</button>`
+    : ''
   const bindingsHtml = (t.boundUrls && t.boundUrls.length > 0)
     ? `<ul class="bindings">${
         t.boundUrls.map(url => {
@@ -87,6 +93,8 @@ function renderTodoLi(t, done = false) {
     <span class="t-text">${checkbox} ${escapeHtml(t.text)}</span>
     ${rolloverBadge}
     ${addBindBtn}
+    ${pinBtn}
+    ${delBtn}
     ${bindingsHtml}
   </li>`
 }
@@ -100,6 +108,7 @@ function renderProjectCard(p, todos) {
   const completed = todos.filter(t => t.status === 'done')
   return `
     <div class="project-card" data-id="${p.id}" data-color="${p.color}">
+      <button class="p-menu" data-id="${p.id}" title="项目操作">⋯</button>
       <div class="project-name">${escapeHtml(p.name)}</div>
       <ul class="todo-list">
         ${pending.map(t => renderTodoLi(t)).join('')}
@@ -163,58 +172,60 @@ export function wireProjectControls() {
  */
 export function wireTodosView() {
   document.addEventListener('click', async (e) => {
-    // Phase 8.1: Click on todo checkbox area (left 30px of pending li)
-    // matches() only fires when the LI itself is the direct target (not a child)
-    if (
-      e.target.matches('li[data-id]') &&
-      !e.target.classList.contains('done')
-    ) {
-      const rect = e.target.getBoundingClientRect()
-      const xInLi = e.clientX - rect.left
-      if (xInLi > 30) return  // not the checkbox area
+    // Phase 8.1 (updated): Click on todo checkbox area (left 30px of pending li)
+    // Use closest() so clicking on child elements (t-text span, badges) still works
+    {
+      const li = e.target.closest('li[data-id]')
+      if (li &&
+          !li.classList.contains('done') &&
+          !e.target.closest('button') &&
+          !e.target.closest('.bindings')) {
+        const rect = li.getBoundingClientRect()
+        const xInLi = e.clientX - rect.left
+        if (xInLi <= 30) {
+          const id = li.dataset.id
+          ;(async () => {
+            const { completeTodo, listTodos } = await import('./todos.js')
+            const { burstConfetti, playSwoosh } = await import('./ui.js')
+            const { archiveIfAllDone } = await import('./projects.js')
 
-      const id = e.target.dataset.id
-      ;(async () => {
-        const li = e.target
-        const { completeTodo, listTodos } = await import('./todos.js')
-        const { burstConfetti, playSwoosh } = await import('./ui.js')
-        const { archiveIfAllDone } = await import('./projects.js')
+            // Capture target todo BEFORE mutation (to know its projectId)
+            const beforeAll = await listTodos()
+            const target = beforeAll.find(x => x.id === id)
+            if (!target || target.status !== 'pending') return
 
-        // Capture target todo BEFORE mutation (to know its projectId)
-        const beforeAll = await listTodos()
-        const target = beforeAll.find(x => x.id === id)
-        if (!target || target.status !== 'pending') return
+            // Visual feedback first (instant)
+            const cx = rect.left + rect.width / 2
+            const cy = rect.top + rect.height / 2
+            for (let i = 0; i < 28; i++) burstConfetti(cx, cy)
+            playSwoosh()
 
-        // Visual feedback first (instant)
-        const cx = rect.left + rect.width / 2
-        const cy = rect.top + rect.height / 2
-        for (let i = 0; i < 28; i++) burstConfetti(cx, cy)
-        playSwoosh()
+            // Then write
+            await completeTodo(id)
 
-        // Then write
-        await completeTodo(id)
-
-        // Phase 9.4: project auto-archive check
-        let justArchived = false
-        if (target.projectId) {
-          justArchived = await archiveIfAllDone(target.projectId)
-        }
-        if (justArchived) {
-          setTimeout(() => {
-            const card = document.querySelector(`.project-card[data-id="${target.projectId}"]`)
-            if (card) {
-              const cr = card.getBoundingClientRect()
-              const pcx = cr.left + cr.width / 2
-              const pcy = cr.top + cr.height / 2
-              for (let i = 0; i < 80; i++) burstConfetti(pcx, pcy)
+            // Phase 9.4: project auto-archive check
+            let justArchived = false
+            if (target.projectId) {
+              justArchived = await archiveIfAllDone(target.projectId)
             }
-          }, 250)
-        }
+            if (justArchived) {
+              setTimeout(() => {
+                const card = document.querySelector(`.project-card[data-id="${target.projectId}"]`)
+                if (card) {
+                  const cr = card.getBoundingClientRect()
+                  const pcx = cr.left + cr.width / 2
+                  const pcy = cr.top + cr.height / 2
+                  for (let i = 0; i < 80; i++) burstConfetti(pcx, pcy)
+                }
+              }, 250)
+            }
 
-        // Re-render after confetti has flown a bit
-        setTimeout(() => renderTodosView(), 600)
-      })()
-      return
+            // Re-render after confetti has flown a bit
+            setTimeout(() => renderTodosView(), 600)
+          })()
+          return
+        }
+      }
     }
 
     // Jump-to-tab on .b-title click
@@ -257,5 +268,134 @@ export function wireTodosView() {
       await renderTodosView()
       return
     }
+
+    // Phase 9.2: Pin / unpin today
+    if (e.target.classList.contains('t-pin')) {
+      e.stopPropagation()
+      const id = e.target.dataset.id
+      const pinned = e.target.dataset.pinned === 'true'
+      const { pinTodayTodo, unpinTodayTodo } = await import('./todos.js')
+      if (pinned) await unpinTodayTodo(id)
+      else await pinTodayTodo(id)
+      await renderTodosView()
+      return
+    }
+
+    // Phase 9.3: Delete todo (soft delete + 5s undo)
+    if (e.target.classList.contains('t-delete')) {
+      e.stopPropagation()
+      const id = e.target.dataset.id
+      const { deleteTodo, listTodos } = await import('./todos.js')
+      const { getStorage, setStorage, KEYS } = await import('./storage.js')
+      const beforeAll = await listTodos()
+      const snapshot = beforeAll.find(t => t.id === id)
+      if (!snapshot) return
+      await deleteTodo(id)
+      await renderTodosView()
+      const { showUndoToast } = await import('./ui.js')
+      showUndoToast(`已删除"${snapshot.text}"`, async () => {
+        const stored = await getStorage(KEYS.todos, [])
+        stored.push(snapshot)
+        await setStorage(KEYS.todos, stored)
+        await renderTodosView()
+      }, 5000)
+      return
+    }
+
+    // Project ⋯ menu → delete dialog
+    if (e.target.classList.contains('p-menu')) {
+      e.stopPropagation()
+      const id = e.target.dataset.id
+      const { listProjects, deleteProject } = await import('./projects.js')
+      const { listTodos, updateTodo, deleteTodo } = await import('./todos.js')
+      const { showModal } = await import('./ui.js')
+      const allProj = await listProjects({ includeArchived: true })
+      const proj = allProj.find(p => p.id === id)
+      if (!proj) return
+      const all = await listTodos()
+      const projTodos = all.filter(t => t.projectId === id)
+      const buttons = projTodos.length === 0
+        ? [{ label: '删除', kind: 'primary', value: 'del' }, { label: '取消', kind: 'ghost', value: 'cancel' }]
+        : [
+            { label: '把 todos 改为无项目，删项目', kind: 'primary', value: 'keep' },
+            { label: '一并删 todos', kind: 'secondary', value: 'all' },
+            { label: '取消', kind: 'ghost', value: 'cancel' },
+          ]
+      const bodyHtml = projTodos.length === 0
+        ? `<p>项目内无 todos，可直接删除。</p>`
+        : `<p>项目内有 ${projTodos.length} 个 todos。</p>`
+      const choice = await showModal({
+        title: `删除项目"${proj.name}"？`,
+        bodyHtml,
+        buttons,
+      })
+      if (choice === 'cancel') return
+      if (choice === 'keep') for (const t of projTodos) await updateTodo(t.id, { projectId: null })
+      if (choice === 'all') for (const t of projTodos) await deleteTodo(t.id)
+      await deleteProject(id)
+      await renderTodosView()
+      return
+    }
   })
+
+  // Phase 9.1: Double-click on todo text → inline edit
+  document.addEventListener('dblclick', async (e) => {
+    const textEl = e.target.closest('.t-text')
+    if (!textEl) return
+    const li = textEl.closest('li[data-id]')
+    if (!li || li.classList.contains('done')) return
+    startInlineEdit(li)
+  })
+}
+
+async function startInlineEdit(li) {
+  const id = li.dataset.id
+  const { listTodos, updateTodo } = await import('./todos.js')
+  const { listProjects, searchProjects, createProject } = await import('./projects.js')
+  const all = await listTodos()
+  const t = all.find(x => x.id === id)
+  if (!t) return
+
+  // Rebuild raw input string: text + #projectname if any
+  const allProjs = await listProjects({ includeArchived: true })
+  const proj = allProjs.find(p => p.id === t.projectId)
+  const raw = proj ? `${t.text} #${proj.name}` : t.text
+
+  // Replace li content with input
+  const input = document.createElement('input')
+  input.type = 'text'
+  input.value = raw
+  input.className = 'inline-edit'
+  li.innerHTML = `${t.status === 'done' ? '☑' : '☐'} `
+  li.appendChild(input)
+  input.focus()
+  input.select()
+
+  let committed = false
+  async function commit() {
+    if (committed) return
+    committed = true
+    const newRaw = input.value.trim()
+    if (!newRaw) {
+      // Empty → cancel (don't delete; just re-render)
+      await renderTodosView()
+      return
+    }
+    const { parseTodoInput } = await import('./input-parser.js')
+    const { text: newText, projectName } = parseTodoInput(newRaw)
+    let newProjectId = null
+    if (projectName) {
+      const matches = await searchProjects(projectName)
+      const exact = matches.find(p => p.name.toLowerCase() === projectName.toLowerCase())
+      newProjectId = (exact ?? await createProject({ name: projectName })).id
+    }
+    await updateTodo(id, { text: newText || t.text, projectId: newProjectId })
+    await renderTodosView()
+  }
+
+  input.addEventListener('keydown', (ev) => {
+    if (ev.key === 'Enter') { ev.preventDefault(); commit() }
+    if (ev.key === 'Escape') { ev.preventDefault(); committed = true; renderTodosView() }
+  })
+  input.addEventListener('blur', commit)
 }
