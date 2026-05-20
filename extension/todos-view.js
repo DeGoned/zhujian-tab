@@ -56,7 +56,10 @@ async function renderProjects() {
   const archived = (await listProjects({ includeArchived: true })).filter(p => p.archived)
   $('archivedCount').textContent = `(${archived.length})`
   $('archivedProjectsList').innerHTML = archived
-    .map(p => `<div class="archived-proj" data-id="${p.id}">${escapeHtml(p.name)}</div>`)
+    .map(p => `<div class="archived-proj" data-id="${p.id}">
+  ${escapeHtml(p.name)}
+  <button class="p-unarchive" data-id="${p.id}" title="取消归档">↺</button>
+</div>`)
     .join('')
 }
 
@@ -299,6 +302,16 @@ export function wireTodosView() {
         await setStorage(KEYS.todos, stored)
         await renderTodosView()
       }, 5000)
+      return
+    }
+
+    // Unarchive project
+    if (e.target.classList.contains('p-unarchive')) {
+      e.stopPropagation()
+      const id = e.target.dataset.id
+      const { updateProject } = await import('./projects.js')
+      await updateProject(id, { archived: false })
+      await renderTodosView()
       return
     }
 

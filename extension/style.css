@@ -1883,4 +1883,26 @@ footer { animation: fadeUp 0.5s ease 0.65s both; }
 }
 .undo-toast .undo-btn:hover { background: rgba(139,92,246,0.4); border-color: #8b5cf6; }
 @keyframes undo-in { from { transform: translate(-50%, 16px); opacity: 0 } to { transform: translateX(-50%); opacity: 1 } }
+
+.archived-proj {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 8px;
+  font-size: 12px;
+  opacity: 0.7;
+}
+.p-unarchive {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  opacity: 0;
+  font-size: 14px;
+  color: #999;
+  padding: 1px 6px;
+  line-height: 1;
+  transition: opacity 0.15s, color 0.15s;
+}
+.archived-proj:hover .p-unarchive { opacity: 0.6; }
+.p-unarchive:hover { opacity: 1 !important; color: #10b981; }
 @keyframes undo-out { to { transform: translate(-50%, 16px); opacity: 0 } }
