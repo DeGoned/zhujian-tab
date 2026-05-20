@@ -1787,3 +1787,14 @@ footer { animation: fadeUp 0.5s ease 0.65s both; }
   color: #92400e;
   opacity: 1;
 }
+
+/* Phase 8.1: cursor hint on todo list items */
+.todo-list li:not(.done) {
+  cursor: pointer;
+}
+.todo-list li.done {
+  cursor: default;
+}
+.todo-list li button {
+  cursor: pointer;
+}

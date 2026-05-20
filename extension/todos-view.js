@@ -163,6 +163,60 @@ export function wireProjectControls() {
  */
 export function wireTodosView() {
   document.addEventListener('click', async (e) => {
+    // Phase 8.1: Click on todo checkbox area (left 30px of pending li)
+    // matches() only fires when the LI itself is the direct target (not a child)
+    if (
+      e.target.matches('li[data-id]') &&
+      !e.target.classList.contains('done')
+    ) {
+      const rect = e.target.getBoundingClientRect()
+      const xInLi = e.clientX - rect.left
+      if (xInLi > 30) return  // not the checkbox area
+
+      const id = e.target.dataset.id
+      ;(async () => {
+        const li = e.target
+        const { completeTodo, listTodos } = await import('./todos.js')
+        const { burstConfetti, playSwoosh } = await import('./ui.js')
+        const { archiveIfAllDone } = await import('./projects.js')
+
+        // Capture target todo BEFORE mutation (to know its projectId)
+        const beforeAll = await listTodos()
+        const target = beforeAll.find(x => x.id === id)
+        if (!target || target.status !== 'pending') return
+
+        // Visual feedback first (instant)
+        const cx = rect.left + rect.width / 2
+        const cy = rect.top + rect.height / 2
+        for (let i = 0; i < 28; i++) burstConfetti(cx, cy)
+        playSwoosh()
+
+        // Then write
+        await completeTodo(id)
+
+        // Phase 9.4: project auto-archive check
+        let justArchived = false
+        if (target.projectId) {
+          justArchived = await archiveIfAllDone(target.projectId)
+        }
+        if (justArchived) {
+          setTimeout(() => {
+            const card = document.querySelector(`.project-card[data-id="${target.projectId}"]`)
+            if (card) {
+              const cr = card.getBoundingClientRect()
+              const pcx = cr.left + cr.width / 2
+              const pcy = cr.top + cr.height / 2
+              for (let i = 0; i < 80; i++) burstConfetti(pcx, pcy)
+            }
+          }, 250)
+        }
+
+        // Re-render after confetti has flown a bit
+        setTimeout(() => renderTodosView(), 600)
+      })()
+      return
+    }
+
     // Jump-to-tab on .b-title click
     if (e.target.classList.contains('b-title')) {
       const li = e.target.closest('li[data-url]')
