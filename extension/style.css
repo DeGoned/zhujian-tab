@@ -1896,13 +1896,73 @@ footer { animation: fadeUp 0.5s ease 0.65s both; }
   background: transparent;
   border: none;
   cursor: pointer;
-  opacity: 0;
+  opacity: 0.65;
   font-size: 14px;
   color: #999;
   padding: 1px 6px;
   line-height: 1;
-  transition: opacity 0.15s, color 0.15s;
+  transition: opacity 0.15s, color 0.15s, transform 0.2s;
 }
-.archived-proj:hover .p-unarchive { opacity: 0.6; }
-.p-unarchive:hover { opacity: 1 !important; color: #10b981; }
+.archived-proj:hover .p-unarchive { opacity: 0.85; }
+.p-unarchive:hover { opacity: 1 !important; color: #10b981; transform: rotate(-90deg); }
 @keyframes undo-out { to { transform: translate(-50%, 16px); opacity: 0 } }
+
+/* ===== Real checkbox button (replaces emoji ☐/☑) ===== */
+.t-check {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  min-width: 18px;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 5px;
+  background: white;
+  cursor: pointer;
+  vertical-align: middle;
+  margin-right: 10px;
+  padding: 0;
+  position: relative;
+  transition: border-color 0.15s, background 0.15s, transform 0.12s, box-shadow 0.15s;
+  flex-shrink: 0;
+}
+.t-check:hover {
+  border-color: #8b5cf6;
+  background: rgba(139, 92, 246, 0.08);
+  transform: scale(1.1);
+  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.15);
+}
+.t-check:active {
+  transform: scale(0.96);
+}
+.t-check.t-check-done {
+  border-color: #8b5cf6;
+  background: #8b5cf6;
+  cursor: default;
+}
+.t-check.t-check-done::after {
+  content: '✓';
+  color: white;
+  font-size: 13px;
+  font-weight: bold;
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+.t-check.t-check-done:hover {
+  transform: none;
+  box-shadow: none;
+}
+.todo-list li {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.todo-list li .t-text {
+  flex: 1;
+  min-width: 0;
+}
+.todo-list li .bindings {
+  flex-basis: 100%;
+}

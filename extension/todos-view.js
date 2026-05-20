@@ -64,7 +64,7 @@ async function renderProjects() {
 }
 
 function renderTodoLi(t, done = false) {
-  const checkbox = done ? '☑' : '☐'
+  const checkboxBtn = `<button class="t-check ${done ? 't-check-done' : ''}" data-id="${t.id}" aria-label="${done ? '取消完成' : '完成'}" title="${done ? '取消完成（v1 不支持）' : '完成'}"></button>`
   const addBindBtn = !done
     ? `<button class="t-add-bind" data-id="${t.id}" title="加 tab" aria-label="加 tab">🔗 +</button>`
     : ''
@@ -93,7 +93,8 @@ function renderTodoLi(t, done = false) {
     ? `<span class="rollover-badge ${t.rolloverCount >= 7 ? 'amber' : ''}" title="已拖延 ${t.rolloverCount} 天">+${t.rolloverCount}d</span>`
     : ''
   return `<li class="${done ? 'done' : ''}" data-id="${t.id}">
-    <span class="t-text">${checkbox} ${escapeHtml(t.text)}</span>
+    ${checkboxBtn}
+    <span class="t-text">${escapeHtml(t.text)}</span>
     ${rolloverBadge}
     ${addBindBtn}
     ${pinBtn}
@@ -175,60 +176,42 @@ export function wireProjectControls() {
  */
 export function wireTodosView() {
   document.addEventListener('click', async (e) => {
-    // Phase 8.1 (updated): Click on todo checkbox area (left 30px of pending li)
-    // Use closest() so clicking on child elements (t-text span, badges) still works
-    {
+    // Click on the real checkbox button to complete a pending todo
+    if (e.target.classList.contains('t-check') && !e.target.classList.contains('t-check-done')) {
+      e.stopPropagation()
       const li = e.target.closest('li[data-id]')
-      if (li &&
-          !li.classList.contains('done') &&
-          !e.target.closest('button') &&
-          !e.target.closest('.bindings')) {
-        const rect = li.getBoundingClientRect()
-        const xInLi = e.clientX - rect.left
-        if (xInLi <= 30) {
-          const id = li.dataset.id
-          ;(async () => {
-            const { completeTodo, listTodos } = await import('./todos.js')
-            const { burstConfetti, playSwoosh } = await import('./ui.js')
-            const { archiveIfAllDone } = await import('./projects.js')
+      if (!li) return
+      const id = li.dataset.id
+      ;(async () => {
+        const { completeTodo, listTodos } = await import('./todos.js')
+        const { burstConfetti, playSwoosh } = await import('./ui.js')
+        const { archiveIfAllDone } = await import('./projects.js')
 
-            // Capture target todo BEFORE mutation (to know its projectId)
-            const beforeAll = await listTodos()
-            const target = beforeAll.find(x => x.id === id)
-            if (!target || target.status !== 'pending') return
+        const beforeAll = await listTodos()
+        const target = beforeAll.find(x => x.id === id)
+        if (!target || target.status !== 'pending') return
 
-            // Visual feedback first (instant)
-            const cx = rect.left + rect.width / 2
-            const cy = rect.top + rect.height / 2
-            for (let i = 0; i < 28; i++) burstConfetti(cx, cy)
-            playSwoosh()
+        // Visual feedback from the checkbox button's center
+        const rect = e.target.getBoundingClientRect()
+        for (let i = 0; i < 28; i++) burstConfetti(rect.left + rect.width / 2, rect.top + rect.height / 2)
+        playSwoosh()
 
-            // Then write
-            await completeTodo(id)
+        await completeTodo(id)
 
-            // Phase 9.4: project auto-archive check
-            let justArchived = false
-            if (target.projectId) {
-              justArchived = await archiveIfAllDone(target.projectId)
+        let justArchived = false
+        if (target.projectId) justArchived = await archiveIfAllDone(target.projectId)
+        if (justArchived) {
+          setTimeout(() => {
+            const card = document.querySelector(`.project-card[data-id="${target.projectId}"]`)
+            if (card) {
+              const r = card.getBoundingClientRect()
+              for (let i = 0; i < 80; i++) burstConfetti(r.left + r.width / 2, r.top + r.height / 2)
             }
-            if (justArchived) {
-              setTimeout(() => {
-                const card = document.querySelector(`.project-card[data-id="${target.projectId}"]`)
-                if (card) {
-                  const cr = card.getBoundingClientRect()
-                  const pcx = cr.left + cr.width / 2
-                  const pcy = cr.top + cr.height / 2
-                  for (let i = 0; i < 80; i++) burstConfetti(pcx, pcy)
-                }
-              }, 250)
-            }
-
-            // Re-render after confetti has flown a bit
-            setTimeout(() => renderTodosView(), 600)
-          })()
-          return
+          }, 250)
         }
-      }
+        setTimeout(() => renderTodosView(), 600)
+      })()
+      return
     }
 
     // Jump-to-tab on .b-title click
@@ -379,7 +362,7 @@ async function startInlineEdit(li) {
   input.type = 'text'
   input.value = raw
   input.className = 'inline-edit'
-  li.innerHTML = `${t.status === 'done' ? '☑' : '☐'} `
+  li.innerHTML = ''
   li.appendChild(input)
   input.focus()
   input.select()
