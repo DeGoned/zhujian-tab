@@ -1,5 +1,6 @@
 import { getStorage, setStorage, KEYS } from './storage.js'
 import { rebuildBindingsCache } from './binding.js'
+import { nextOccurrence } from './reminders.js'
 
 function uid() {
   return 't_' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36)
@@ -32,6 +33,7 @@ export async function createTodo(input) {
     lastRolloverDate: todayStr(),
     order: now, // v1 用 createdAt 作 order
     notes: '',
+    reminders: input.reminders ?? [],
   }
   const all = await listTodos()
   all.push(todo)
@@ -135,4 +137,95 @@ export async function pinTodayTodo(id) {
 
 export async function unpinTodayTodo(id) {
   return await updateTodo(id, { pinnedToday: false })
+}
+
+function ridFor() {
+  return 'rmd_' + Math.random().toString(36).slice(2, 10)
+}
+
+/**
+ * 排定（或重排）某 reminder 的 alarm。snoozedUntil 优先。
+ */
+async function scheduleAlarm(reminder, now = Date.now()) {
+  await chrome.alarms.clear(reminder.id)
+  const when = reminder.snoozedUntil ?? nextOccurrence(reminder.rule, reminder.firstAt, now, reminder.lastFiredAt)
+  if (when) await chrome.alarms.create(reminder.id, { when })
+}
+
+export async function addReminder(todoId, partial) {
+  const reminder = {
+    id: ridFor(),
+    firstAt: partial.firstAt,
+    rule: partial.rule || 'once',
+    snoozedUntil: null,
+    lastFiredAt: null,
+    lastCompletedAt: null,
+    createdAt: Date.now(),
+  }
+  const all = await listTodos()
+  const idx = all.findIndex(t => t.id === todoId)
+  if (idx === -1) throw new Error(`todo ${todoId} not found`)
+  all[idx] = { ...all[idx], reminders: [...(all[idx].reminders || []), reminder] }
+  await setStorage(KEYS.todos, all)
+  await scheduleAlarm(reminder)
+  return reminder
+}
+
+export async function updateReminder(todoId, reminderId, patch) {
+  const all = await listTodos()
+  const idx = all.findIndex(t => t.id === todoId)
+  if (idx === -1) throw new Error(`todo ${todoId} not found`)
+  const reminders = (all[idx].reminders || []).map(r =>
+    r.id === reminderId ? { ...r, ...patch } : r
+  )
+  all[idx] = { ...all[idx], reminders }
+  await setStorage(KEYS.todos, all)
+  const updated = reminders.find(r => r.id === reminderId)
+  if (updated) await scheduleAlarm(updated)
+  return updated
+}
+
+export async function removeReminder(todoId, reminderId) {
+  const all = await listTodos()
+  const idx = all.findIndex(t => t.id === todoId)
+  if (idx === -1) return
+  all[idx] = {
+    ...all[idx],
+    reminders: (all[idx].reminders || []).filter(r => r.id !== reminderId),
+  }
+  await setStorage(KEYS.todos, all)
+  await chrome.alarms.clear(reminderId)
+}
+
+export async function snoozeReminder(todoId, reminderId, untilTs) {
+  return await updateReminder(todoId, reminderId, { snoozedUntil: untilTs })
+}
+
+export async function completeReminderCycle(todoId, reminderId, now = Date.now()) {
+  const all = await listTodos()
+  const idx = all.findIndex(t => t.id === todoId)
+  if (idx === -1) return
+  const reminder = (all[idx].reminders || []).find(r => r.id === reminderId)
+  if (!reminder) return
+
+  const patchedReminder = { ...reminder, lastCompletedAt: now, snoozedUntil: null }
+  const reminders = all[idx].reminders.map(r => r.id === reminderId ? patchedReminder : r)
+
+  // 一次性 reminder 完成且 todo 没其他活跃 reminder → todo 也完成
+  const isOnce = reminder.rule === 'once'
+  const otherActive = reminders.some(r => r.id !== reminderId && r.rule !== 'once')
+  if (isOnce && !otherActive) {
+    all[idx] = { ...all[idx], reminders, status: 'done', completedAt: now }
+    await setStorage(KEYS.todos, all)
+    await chrome.alarms.clear(reminderId)
+    return
+  }
+
+  all[idx] = { ...all[idx], reminders }
+  await setStorage(KEYS.todos, all)
+  if (isOnce) {
+    await chrome.alarms.clear(reminderId)
+  } else {
+    await scheduleAlarm(patchedReminder, now)
+  }
 }
