@@ -3,7 +3,7 @@
   "name": "Tab Out + Todo",
   "version": "1.0.0",
   "description": "Tab Out 基础上扩展待办管理：深度绑定 tab、今日/项目双 view、全局快捷键捕获。",
-  "permissions": ["tabs", "activeTab", "storage", "scripting"],
+  "permissions": ["tabs", "activeTab", "storage", "scripting", "alarms", "notifications"],
   "host_permissions": ["<all_urls>"],
   "chrome_url_overrides": { "newtab": "index.html" },
   "background": { "service_worker": "background.js", "type": "module" },
