@@ -93,3 +93,57 @@ describe('nextOccurrence — biweekly', () => {
     expect(nextOccurrence('biweekly:Mon', firstAt, at(2026, 5, 26, 10, 0))).toBe(at(2026, 6, 1, 9, 0))
   })
 })
+
+describe('nextOccurrence — monthly', () => {
+  it('monthly:15 — 今天 5/21，下次 6/15', () => {
+    const firstAt = at(2026, 5, 15, 9, 0)
+    expect(nextOccurrence('monthly:15', firstAt, at(2026, 5, 21, 10, 0))).toBe(at(2026, 6, 15, 9, 0))
+  })
+
+  it('monthly:15 — 今天 5/14，下次 5/15', () => {
+    const firstAt = at(2026, 5, 15, 9, 0)
+    expect(nextOccurrence('monthly:15', firstAt, at(2026, 5, 14, 10, 0))).toBe(at(2026, 5, 15, 9, 0))
+  })
+
+  it('monthly:31 — 2 月跳到 28', () => {
+    const firstAt = at(2026, 1, 31, 9, 0)
+    expect(nextOccurrence('monthly:31', firstAt, at(2026, 2, 1, 10, 0))).toBe(at(2026, 2, 28, 9, 0))
+  })
+
+  it('monthly:31 — 闰年 2 月 → 29', () => {
+    const firstAt = at(2024, 1, 31, 9, 0)
+    expect(nextOccurrence('monthly:31', firstAt, at(2024, 2, 1, 10, 0))).toBe(at(2024, 2, 29, 9, 0))
+  })
+
+  it('monthly:last — 5 月 → 5/31', () => {
+    const firstAt = at(2026, 5, 31, 18, 0)
+    expect(nextOccurrence('monthly:last', firstAt, at(2026, 5, 30, 10, 0))).toBe(at(2026, 5, 31, 18, 0))
+  })
+
+  it('monthly:last — 已过 5/31 → 6/30', () => {
+    const firstAt = at(2026, 5, 31, 18, 0)
+    expect(nextOccurrence('monthly:last', firstAt, at(2026, 6, 1, 10, 0))).toBe(at(2026, 6, 30, 18, 0))
+  })
+
+  it('monthly:last — 2 月最后一天 = 28（非闰）', () => {
+    const firstAt = at(2026, 1, 31, 18, 0)
+    expect(nextOccurrence('monthly:last', firstAt, at(2026, 2, 1, 10, 0))).toBe(at(2026, 2, 28, 18, 0))
+  })
+})
+
+describe('nextOccurrence — yearly', () => {
+  it('yearly:5-21 — 今年 5/21 已过 → 明年', () => {
+    const firstAt = at(2026, 5, 21, 9, 0)
+    expect(nextOccurrence('yearly:5-21', firstAt, at(2026, 5, 22, 10, 0))).toBe(at(2027, 5, 21, 9, 0))
+  })
+
+  it('yearly:5-21 — 今年 5/21 未到 → 今年', () => {
+    const firstAt = at(2026, 5, 21, 9, 0)
+    expect(nextOccurrence('yearly:5-21', firstAt, at(2026, 5, 20, 10, 0))).toBe(at(2026, 5, 21, 9, 0))
+  })
+
+  it('yearly:2-29 — 非闰年妥协到 2/28', () => {
+    const firstAt = at(2024, 2, 29, 9, 0)
+    expect(nextOccurrence('yearly:2-29', firstAt, at(2024, 3, 1, 10, 0))).toBe(at(2025, 2, 28, 9, 0))
+  })
+})

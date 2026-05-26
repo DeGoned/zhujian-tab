@@ -326,5 +326,34 @@ export function nextOccurrence(rule, firstAt, now, lastFiredAt = null) {
     return null
   }
 
-  return null  // 其他 rule 留到 Task 5
+  if (rule.startsWith('monthly:')) {
+    const dayPart = rule.slice(8)   // '15' or 'last'
+    let yr = new Date(now).getFullYear()
+    let mo = new Date(now).getMonth()  // 0-indexed
+    for (let i = 0; i < 13; i++) {
+      const targetMonth = (mo + i) % 12
+      const targetYear = yr + Math.floor((mo + i) / 12)
+      const lastDayOfMonth = new Date(targetYear, targetMonth + 1, 0).getDate()
+      const dayNum = dayPart === 'last' ? lastDayOfMonth : Math.min(+dayPart, lastDayOfMonth)
+      const candidate = localTs(targetYear, targetMonth + 1, dayNum, h, m)
+      if (candidate > now) return candidate
+    }
+    return null
+  }
+
+  if (rule.startsWith('yearly:')) {
+    const [mStr, dStr] = rule.slice(7).split('-')
+    const monthNum = +mStr
+    const dayNum = +dStr
+    let yr = new Date(now).getFullYear()
+    for (let i = 0; i < 4; i++) {
+      const lastDayOfMonth = new Date(yr + i, monthNum, 0).getDate()
+      const actualDay = Math.min(dayNum, lastDayOfMonth)
+      const candidate = localTs(yr + i, monthNum, actualDay, h, m)
+      if (candidate > now) return candidate
+    }
+    return null
+  }
+
+  return null
 }
