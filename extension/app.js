@@ -1426,6 +1426,30 @@ chrome.runtime.onMessage.addListener((msg, _sender, _sendResponse) => {
   return false
 })
 
+// Reminders — handle notification body click broadcasts from background.js.
+// 切到 Todos 视图 + 滚到目标 todo + 黄色闪烁高亮。
+chrome.runtime.onMessage.addListener((msg, _sender, _sendResponse) => {
+  if (!msg || (msg.type !== 'reminder-clicked' && msg.type !== 'catchup-clicked')) return false
+  // 切到 Todos 视图
+  const layoutRoot = document.getElementById('layout-root')
+  if (layoutRoot && layoutRoot.dataset.visible === 'tabs') {
+    const btn = document.querySelector('#toggleViewBtn span[data-target="todos"]')
+    if (btn) btn.click()
+  }
+  // reminder-clicked 时滚到指定 todo + 高亮
+  if (msg.type === 'reminder-clicked' && msg.todoId) {
+    setTimeout(() => {
+      const li = document.querySelector(`li[data-id="${msg.todoId}"]`)
+      if (li) {
+        li.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        li.classList.add('t-flash')
+        setTimeout(() => li.classList.remove('t-flash'), 2400)
+      }
+    }, 300)
+  }
+  return false
+})
+
 function _getOrCreateToastStack() {
   let stack = document.getElementById('closure-toast-stack')
   if (!stack) {

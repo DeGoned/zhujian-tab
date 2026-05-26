@@ -2076,3 +2076,12 @@ footer { animation: fadeUp 0.5s ease 0.65s both; }
   border-radius: 8px;
   font-size: 10px;
 }
+
+/* ─── reminder click highlight flash ──────────────────────────────────── */
+.todo-list li.t-flash {
+  animation: t-flash-anim 2.4s ease;
+}
+@keyframes t-flash-anim {
+  0%   { background: #fde68a; }
+  100% { background: transparent; }
+}
