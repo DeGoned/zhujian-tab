@@ -44,9 +44,9 @@ v1.0.0 完成后，所有提醒（`showToast`、关 tab `showModal`、勾选 `co
 
 ```js
 todo = {
-  // ... 现有 v1 字段
-  id, text, projectId, doneAt, pinnedToday, createdAt, rolloverCount,
-  bindings, // [{ tabId, url, title, faviconUrl }]
+  // ... 现有 v1 字段（来自 todos.js createTodo()）
+  id, text, status, projectId, pinnedToday, boundUrls, createdAt, completedAt,
+  rolloverCount, lastRolloverDate, order, notes,
 
   // 新增
   reminders: [Reminder]  // 默认 []
@@ -92,24 +92,22 @@ Reminder = {
 
 点 ☐ 完成 todo 时：
 
-- 所有 reminders 全是 `once` 且 todo 已无 active reminder → 进归档（已有逻辑）
-- 任一 reminder 是重复型 → todo **不进归档**，`doneAt` 不设。下次 fire 时把 todo 视为"未完成的新一轮"
-- 具体实现：把"完成"动作绑到 reminder 而非 todo —— 每个 reminder 维护自己的 `lastCompletedAt`，UI 上 todo 的 ☑/☐ 反映"本周期是否已完成"
+- 所有 reminders 全是 `once` 或无 reminder → 走现有 `completeTodo()` 逻辑（`status='done'` + `completedAt=now`），进历史/归档
+- 任一 reminder 是重复型 → todo **不改 status**，只更新该 reminder 的 `lastCompletedAt`。下次 fire 时把 todo 视为"未完成的新一轮"
+- 具体实现：把"完成"动作绑到 reminder 而非 todo —— 每个重复 reminder 维护自己的 `lastCompletedAt`，UI 上 todo 的 ☑/☐ 反映"本周期是否已完成"
 
 ```js
-Reminder = {
-  // ... 上面的字段
-  lastCompletedAt: number | null,  // 本周期的完成时间
-}
-
-// 判断 todo 是否"本周期已完成"：
+// 判断 todo 是否"本周期已完成"（决定 ☐ vs ☑ 的渲染）：
 function isCurrentCycleDone(todo) {
-  if (!todo.reminders.length) return !!todo.doneAt;  // 无 reminder → 看 doneAt
-  // 有 reminder 时：所有 reminder 都已完成本周期
+  if (!todo.reminders || todo.reminders.length === 0) {
+    return todo.status === 'done'   // 无 reminder → 看 todo.status
+  }
+  // 有 reminder：每个 reminder 在本周期都完成才算完成
   return todo.reminders.every(r => {
-    const cycleStart = previousOccurrence(r.rule, r.firstAt, Date.now());
-    return r.lastCompletedAt && r.lastCompletedAt >= cycleStart;
-  });
+    const cycleStart = previousOccurrence(r.rule, r.firstAt, Date.now())
+    if (cycleStart == null) return r.lastCompletedAt != null  // 一次性已过 → 看是否完成过
+    return r.lastCompletedAt && r.lastCompletedAt >= cycleStart
+  })
 }
 ```
 
