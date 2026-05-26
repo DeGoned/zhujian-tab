@@ -18,6 +18,7 @@ Tab Out（by [Zara](https://github.com/zarazhangrui/tab-out)）的 fork，在原
 - ✅ 今日过夜规则：未完成自动滚动 + `+Nd` 徽标
 - ✅ 双击编辑、⭐pin/取消挂今日、🗑 删除 + 5s 撤销
 - ✅ 跨多个新标签页实时同步
+- ✅ Mac 系统通知（任意时间点 + 9 种重复规则 + `✅完成` / `😴推迟` 按钮 + Chrome 重启后聚合补报）
 - ✅ 100% 本地存储（`chrome.storage.local`）
 
 ## 安装
@@ -105,10 +106,28 @@ npm run test:watch # 监听模式
 - [ ] 开两个新标签页 A、B，A 输入一条 todo → B 自动出现（无需 reload）
 - [ ] A 关一个绑过的 tab → B 也弹 toast（去重，只弹一次）
 
+**🔔 系统通知（新增 v1.1）**
+
+> 重复规则支持 9 个预设（不重复 / 每天 / 工作日 / 每周X / 每两周X / 每月N / 每月最后一天 / 每年 M 月 D 日）；任意自定义 RRULE 子集 v1.2 提供。
+
+- [ ] 首次启用 → Chrome 弹 macOS 通知授权 → 系统设置 → 通知 → Google Chrome 可见"允许"
+- [ ] 输入框打 `测试 @1 分钟后` 回车 → 1 分钟后右上角弹横幅通知
+- [ ] 通知点 ✅ 完成 → todo 划线进归档
+- [ ] 通知点 😴 推迟 → 30 分钟后再弹一次
+- [ ] 输入框打 `喝水 @9:00 ~每天`（取一个未来时间）→ 弹一次后明天同一时刻自动再排
+- [ ] todo hover → 🔔 icon 出现 → 点击 → reminder popover 弹出
+- [ ] popover 改时间 + 重复 → 保存 → 卡片底部出现"🔔 下次 XX · 每天"
+- [ ] popover 点 `+ 添加提醒` → 多一行 → 保存 → 卡片显示 `🔔 ×2`
+- [ ] 设置面板"🔔 通知行为"切默认推迟 = 5 分钟 → 下次通知按钮文案变 `😴 推迟 5 分钟`
+- [ ] 关 Chrome 完全退出 → 5 分钟后再开 → 错过的提醒弹聚合通知 `🔔 你有 X 条错过的提醒`
+- [ ] 点聚合通知 → 自动切 Todos 视图
+
 ## 文档
 
 - 设计：`docs/superpowers/specs/2026-05-17-tab-out-todo-design.md`
 - 实现计划：`docs/superpowers/plans/2026-05-17-tab-out-todo.md`
+- 提醒设计：`docs/superpowers/specs/2026-05-26-todo-reminders-design.md`
+- 提醒实现计划：`docs/superpowers/plans/2026-05-26-todo-reminders.md`
 - 推文：`docs/twitter-thread.md`
 
 ## License
