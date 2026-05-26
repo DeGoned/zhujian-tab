@@ -252,3 +252,79 @@ export function parseReminderInline(text, now = Date.now()) {
   }
   return { cleanText: out.replace(/\s+/g, ' ').trim(), reminders }
 }
+
+const WEEKDAY_ENGLISH_TO_NUM = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 }
+
+function extractHM(ts) {
+  const d = new Date(ts)
+  return { h: d.getHours(), m: d.getMinutes() }
+}
+
+function setHM(ts, h, m) {
+  const d = new Date(ts); d.setHours(h, m, 0, 0); return d.getTime()
+}
+
+function startOfDay(ts) {
+  const d = new Date(ts); d.setHours(0, 0, 0, 0); return d.getTime()
+}
+
+function addDays(ts, n) {
+  const d = new Date(ts); d.setDate(d.getDate() + n); return d.getTime()
+}
+
+/**
+ * @param {string} rule
+ * @param {number} firstAt
+ * @param {number} now
+ * @param {number|null} lastFiredAt
+ * @returns {number|null}
+ */
+export function nextOccurrence(rule, firstAt, now, lastFiredAt = null) {
+  // firstAt 还在未来 → 永远先用 firstAt
+  if (firstAt > now) return firstAt
+
+  if (rule === 'once') return null
+
+  const { h, m } = extractHM(firstAt)
+
+  if (rule === 'daily') {
+    let candidate = setHM(now, h, m)
+    if (candidate <= now) candidate = addDays(candidate, 1)
+    return candidate
+  }
+
+  if (rule === 'weekdays') {
+    let candidate = setHM(now, h, m)
+    if (candidate <= now) candidate = addDays(candidate, 1)
+    while (new Date(candidate).getDay() === 0 || new Date(candidate).getDay() === 6) {
+      candidate = addDays(candidate, 1)
+    }
+    return candidate
+  }
+
+  if (rule.startsWith('weekly:')) {
+    const dows = rule.slice(7).split(',').map(s => WEEKDAY_ENGLISH_TO_NUM[s])
+    for (let i = 0; i < 8; i++) {
+      const candidate = setHM(addDays(now, i), h, m)
+      if (candidate <= now) continue
+      if (dows.includes(new Date(candidate).getDay())) return candidate
+    }
+    return null  // unreachable for valid rule
+  }
+
+  if (rule.startsWith('biweekly:')) {
+    const targetDow = WEEKDAY_ENGLISH_TO_NUM[rule.slice(9)]
+    // 从 firstAt 算起，每 14 天的同一星期
+    const firstDayStart = startOfDay(firstAt)
+    for (let i = 0; i < 21; i++) {
+      const candidate = setHM(addDays(now, i), h, m)
+      if (candidate <= now) continue
+      if (new Date(candidate).getDay() !== targetDow) continue
+      const daysFromFirst = Math.round((startOfDay(candidate) - firstDayStart) / 86400_000)
+      if (daysFromFirst % 14 === 0) return candidate
+    }
+    return null
+  }
+
+  return null  // 其他 rule 留到 Task 5
+}
