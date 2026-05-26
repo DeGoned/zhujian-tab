@@ -224,6 +224,17 @@
   <div id="bindPopExisting" class="bind-pop-list"></div>
 </div>
 
+<div id="reminderPopover" class="reminder-popover" hidden role="dialog" aria-label="设置提醒">
+  <div class="rp-header">设置提醒</div>
+  <div id="rpList" class="rp-list"></div>
+  <div class="rp-actions">
+    <button id="rpAdd" class="rp-add">+ 添加提醒</button>
+    <div class="rp-spacer"></div>
+    <button id="rpCancel" class="rp-cancel">取消</button>
+    <button id="rpSave" class="rp-save">保存</button>
+  </div>
+</div>
+
 <!-- Main dashboard logic — loads last so the DOM is ready -->
 <script type="module" src="app.js"></script>
 </body>
