@@ -1,5 +1,6 @@
 // Tab Out + Todo extensions — static imports for service worker (MV3 module)
-import { createTodo, listTodos, updateTodo, completeTodo } from './todos.js'
+import { createTodo, listTodos, updateTodo, completeTodo, completeReminderCycle, snoozeReminder, updateReminder } from './todos.js'
+import { nextOccurrence, previousOccurrence } from './reminders.js'
 import { searchProjects, createProject } from './projects.js'
 import { rememberUrlTitle } from './binding.js'
 import { parseTodoInput } from './input-parser.js'
@@ -241,3 +242,150 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   })()
   return true  // async response
 })
+
+// ============================================================
+// Reminders — alarm fires + notifications
+// ============================================================
+
+const MAX_LOOKBACK_MS = 7 * 24 * 60 * 60 * 1000
+const DEDUP_WINDOW_MS = 60_000
+
+/**
+ * 找到 alarm.name (= reminder.id) 对应的 todo + reminder。
+ */
+async function findReminderTarget(reminderId) {
+  const all = await listTodos()
+  for (const t of all) {
+    const r = (t.reminders || []).find(x => x.id === reminderId)
+    if (r) return { todo: t, reminder: r }
+  }
+  return null
+}
+
+chrome.alarms.onAlarm.addListener(async (alarm) => {
+  if (!alarm.name.startsWith('rmd_')) return
+  const target = await findReminderTarget(alarm.name)
+  if (!target) {
+    await chrome.alarms.clear(alarm.name).catch(() => {})
+    return
+  }
+  const { todo, reminder } = target
+
+  // skip 已完成的一次性 reminder
+  if (todo.status === 'done' && reminder.rule === 'once') {
+    await chrome.alarms.clear(alarm.name).catch(() => {})
+    return
+  }
+
+  const settings = await getSettings()
+  const snoozeMin = settings.defaultSnoozeMin || 30
+
+  // 弹通知
+  try {
+    chrome.notifications.create(reminder.id, {
+      type: 'basic',
+      iconUrl: 'icons/icon128.png',
+      title: todo.text.slice(0, 50) || '提醒',
+      message: '',
+      contextMessage: 'Tab Out + Todo',
+      buttons: [
+        { title: '✅ 完成' },
+        { title: `😴 推迟 ${snoozeMin} 分钟` },
+      ],
+      priority: 1,
+      requireInteraction: false,
+    })
+  } catch (e) {
+    console.warn('notifications.create failed', e)
+  }
+
+  // 更新 lastFiredAt + 清 snoozedUntil + 排下次
+  const now = Date.now()
+  await updateReminder(todo.id, reminder.id, { lastFiredAt: now, snoozedUntil: null })
+  // updateReminder 会重新 scheduleAlarm；因为 snoozedUntil 已清，nextOccurrence 走 rule 算
+})
+
+chrome.notifications.onButtonClicked.addListener(async (notifId, btnIdx) => {
+  if (!notifId.startsWith('rmd_')) return
+  const target = await findReminderTarget(notifId)
+  if (!target) return
+  const { todo, reminder } = target
+  const settings = await getSettings()
+  const snoozeMin = settings.defaultSnoozeMin || 30
+
+  if (btnIdx === 0) {
+    await completeReminderCycle(todo.id, reminder.id)
+  } else if (btnIdx === 1) {
+    await snoozeReminder(todo.id, reminder.id, Date.now() + snoozeMin * 60_000)
+  }
+  chrome.notifications.clear(notifId)
+})
+
+chrome.notifications.onClicked.addListener(async (notifId) => {
+  if (!notifId.startsWith('rmd_') && !notifId.startsWith('catchup_')) return
+  chrome.notifications.clear(notifId)
+  // 打开新标签页 → 等 app.js listener 注册 → 广播 highlight
+  await chrome.tabs.create({ url: 'chrome://newtab', active: true })
+  setTimeout(async () => {
+    try {
+      if (notifId.startsWith('rmd_')) {
+        const target = await findReminderTarget(notifId)
+        if (target) {
+          await chrome.runtime.sendMessage({
+            type: 'reminder-clicked',
+            todoId: target.todo.id,
+            reminderId: target.reminder.id,
+          })
+        }
+      } else if (notifId.startsWith('catchup_')) {
+        await chrome.runtime.sendMessage({ type: 'catchup-clicked' })
+      }
+    } catch (e) {
+      // 没有 listener 时 sendMessage 会 reject，吞掉
+    }
+  }, 500)
+})
+
+/**
+ * 启动时跑：找过去 7 天内"应该 fire 但没 fire"的 reminders，聚合一条通知；
+ * 同时重建所有 reminders 的 alarm（alarm 在 chrome restart 后可能丢）。
+ */
+async function catchupMissed() {
+  const todos = await listTodos()
+  const now = Date.now()
+  const missed = []
+  for (const t of todos) {
+    for (const r of (t.reminders || [])) {
+      // 重建 alarm
+      const next = r.snoozedUntil ?? nextOccurrence(r.rule, r.firstAt, now, r.lastFiredAt)
+      if (next) {
+        await chrome.alarms.clear(r.id).catch(() => {})
+        await chrome.alarms.create(r.id, { when: next }).catch(() => {})
+      }
+      // 算上一次应触发
+      const prev = previousOccurrence(r.rule, r.firstAt, now - DEDUP_WINDOW_MS)
+      if (!prev) continue
+      if (prev < now - MAX_LOOKBACK_MS) continue
+      if (r.lastFiredAt && r.lastFiredAt >= prev) continue
+      if (t.status === 'done' && r.rule === 'once') continue
+      missed.push({ todo: t, reminder: r })
+    }
+  }
+  if (missed.length === 0) return
+  const titles = missed.slice(0, 3).map(m => m.todo.text).join('；')
+  try {
+    chrome.notifications.create('catchup_' + Date.now(), {
+      type: 'basic',
+      iconUrl: 'icons/icon128.png',
+      title: `🔔 你有 ${missed.length} 条错过的提醒`,
+      message: titles + (missed.length > 3 ? '...' : ''),
+      contextMessage: 'Tab Out + Todo',
+      priority: 1,
+    })
+  } catch (e) {
+    console.warn('catchup notification failed', e)
+  }
+}
+
+chrome.runtime.onStartup.addListener(catchupMissed)
+chrome.runtime.onInstalled.addListener(catchupMissed)
