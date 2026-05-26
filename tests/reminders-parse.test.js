@@ -172,3 +172,77 @@ describe('parseReminderInline — 兜底', () => {
     expect(r.reminders[0].firstAt).toBe(at(2026, 5, 21, 14, 30))
   })
 })
+
+describe('parseReminderInline — 重复规则', () => {
+  it('~每天 紧跟 @时间', () => {
+    const r = parseReminderInline('喝水 @9:00 ~每天', NOW)
+    expect(r.reminders).toEqual([{ firstAt: at(2026, 5, 22, 9, 0), rule: 'daily' }])
+  })
+
+  it('~每日 等同 ~每天', () => {
+    const r = parseReminderInline('喝水 @9:00 ~每日', NOW)
+    expect(r.reminders[0].rule).toBe('daily')
+  })
+
+  it('~工作日', () => {
+    const r = parseReminderInline('打卡 @9:30 ~工作日', NOW)
+    expect(r.reminders[0].rule).toBe('weekdays')
+  })
+
+  it('~周一到周五 = ~工作日', () => {
+    const r = parseReminderInline('打卡 @9:30 ~周一到周五', NOW)
+    expect(r.reminders[0].rule).toBe('weekdays')
+  })
+
+  it('~每周一 → weekly:Mon', () => {
+    const r = parseReminderInline('汇报 @9:00 ~每周一', NOW)
+    expect(r.reminders[0].rule).toBe('weekly:Mon')
+  })
+
+  it('~每周一三五 → weekly:Mon,Wed,Fri', () => {
+    const r = parseReminderInline('健身 @19:00 ~每周一三五', NOW)
+    expect(r.reminders[0].rule).toBe('weekly:Mon,Wed,Fri')
+  })
+
+  it('~每周二四六', () => {
+    const r = parseReminderInline('打球 @19:00 ~每周二四六', NOW)
+    expect(r.reminders[0].rule).toBe('weekly:Tue,Thu,Sat')
+  })
+
+  it('~每两周一', () => {
+    const r = parseReminderInline('体检 @9:00 ~每两周一', NOW)
+    expect(r.reminders[0].rule).toBe('biweekly:Mon')
+  })
+
+  it('~每月15号', () => {
+    const r = parseReminderInline('交房租 @9:00 ~每月15号', NOW)
+    expect(r.reminders[0].rule).toBe('monthly:15')
+  })
+
+  it('~每月15 (无"号")', () => {
+    const r = parseReminderInline('交房租 @9:00 ~每月15', NOW)
+    expect(r.reminders[0].rule).toBe('monthly:15')
+  })
+
+  it('~每月最后一天', () => {
+    const r = parseReminderInline('结账 @18:00 ~每月最后一天', NOW)
+    expect(r.reminders[0].rule).toBe('monthly:last')
+  })
+
+  it('~每年5月21日', () => {
+    const r = parseReminderInline('纪念日 @9:00 ~每年5月21日', NOW)
+    expect(r.reminders[0].rule).toBe('yearly:5-21')
+  })
+
+  it('孤立的 ~ 保留在 cleanText', () => {
+    const r = parseReminderInline('注释 ~随便写', NOW)
+    expect(r.cleanText).toBe('注释 ~随便写')
+    expect(r.reminders).toEqual([])
+  })
+
+  it('未识别的 ~xxx 保留在 cleanText', () => {
+    const r = parseReminderInline('喝水 @9:00 ~乱写', NOW)
+    expect(r.cleanText).toBe('喝水 ~乱写')
+    expect(r.reminders[0].rule).toBe('once')
+  })
+})

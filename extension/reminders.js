@@ -2,6 +2,8 @@
 // 纯函数。不依赖 chrome / DOM / storage。
 
 const WEEKDAY_MAP = { '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6, '日': 0, '天': 0 }
+const WEEKDAY_ENGLISH = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+const WEEKDAY_CHAR_TO_NUM = WEEKDAY_MAP  // alias for clarity
 
 /**
  * 给定本地时间各分量，返回该时刻的 timestamp。
@@ -169,7 +171,51 @@ function tryParseTimeSub(sub, now) {
 }
 
 /**
- * 解析输入文本，提取所有 @时间 子串。
+ * 解析 `~xxx` → { rule, matchLength } 或 null。
+ * sub 是从 '~' 之后开始的字符串。
+ *
+ * @param {string} sub
+ * @returns {{ rule: string, matchLength: number } | null}
+ */
+function tryParseRepeatSub(sub) {
+  // ~每天 / ~每日
+  let m = sub.match(/^(每天|每日)/)
+  if (m) return { rule: 'daily', matchLength: m[0].length }
+
+  // ~工作日 / ~周一到周五
+  m = sub.match(/^(工作日|周一到周五)/)
+  if (m) return { rule: 'weekdays', matchLength: m[0].length }
+
+  // ~每两周X
+  m = sub.match(/^每两周([一二三四五六日天])/)
+  if (m) {
+    return { rule: `biweekly:${WEEKDAY_ENGLISH[WEEKDAY_CHAR_TO_NUM[m[1]]]}`, matchLength: m[0].length }
+  }
+
+  // ~每周XYZ（贪婪匹配连续中文星期数）
+  m = sub.match(/^每周([一二三四五六日天]+)/)
+  if (m) {
+    const days = [...m[1]].map(ch => WEEKDAY_ENGLISH[WEEKDAY_CHAR_TO_NUM[ch]])
+    return { rule: `weekly:${days.join(',')}`, matchLength: m[0].length }
+  }
+
+  // ~每月最后一天
+  m = sub.match(/^每月最后一天/)
+  if (m) return { rule: 'monthly:last', matchLength: m[0].length }
+
+  // ~每月N号?
+  m = sub.match(/^每月(\d{1,2})号?/)
+  if (m) return { rule: `monthly:${+m[1]}`, matchLength: m[0].length }
+
+  // ~每年M月D日?
+  m = sub.match(/^每年(\d{1,2})月(\d{1,2})日?/)
+  if (m) return { rule: `yearly:${+m[1]}-${+m[2]}`, matchLength: m[0].length }
+
+  return null
+}
+
+/**
+ * 解析输入文本，提取所有 @时间 子串和 ~重复 后缀。
  *
  * @param {string} text
  * @param {number} [now=Date.now()]
@@ -180,21 +226,29 @@ export function parseReminderInline(text, now = Date.now()) {
   let cursor = 0
   let out = ''
   while (cursor < text.length) {
-    const atIdx = text.indexOf('@', cursor)
-    if (atIdx === -1) {
-      out += text.slice(cursor)
-      break
+    const ch = text[cursor]
+    if (ch === '@') {
+      const sub = text.slice(cursor + 1)
+      const parsed = tryParseTimeSub(sub, now)
+      if (parsed) {
+        reminders.push({ firstAt: parsed.firstAt, rule: 'once' })
+        cursor = cursor + 1 + parsed.matchLength
+        continue
+      }
+      out += '@'; cursor++; continue
     }
-    out += text.slice(cursor, atIdx)
-    const sub = text.slice(atIdx + 1)
-    const parsed = tryParseTimeSub(sub, now)
-    if (parsed) {
-      reminders.push({ firstAt: parsed.firstAt, rule: 'once' })
-      cursor = atIdx + 1 + parsed.matchLength
-    } else {
-      out += '@'
-      cursor = atIdx + 1
+    if (ch === '~') {
+      const sub = text.slice(cursor + 1)
+      const parsed = tryParseRepeatSub(sub)
+      if (parsed && reminders.length > 0) {
+        // 应用到最近的 reminder
+        reminders[reminders.length - 1].rule = parsed.rule
+        cursor = cursor + 1 + parsed.matchLength
+        continue
+      }
+      out += '~'; cursor++; continue
     }
+    out += ch; cursor++
   }
   return { cleanText: out.replace(/\s+/g, ' ').trim(), reminders }
 }
