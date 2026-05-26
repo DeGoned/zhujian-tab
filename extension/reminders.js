@@ -439,3 +439,65 @@ export function previousOccurrence(rule, firstAt, now) {
 
   return null
 }
+
+const ZH_WEEKDAY = ['日', '一', '二', '三', '四', '五', '六']
+const ZH_WEEKDAY_FROM_ENG = { Sun: '日', Mon: '一', Tue: '二', Wed: '三', Thu: '四', Fri: '五', Sat: '六' }
+
+function sameYmd(ts1, ts2) {
+  const d1 = new Date(ts1), d2 = new Date(ts2)
+  return d1.getFullYear() === d2.getFullYear() && d1.getMonth() === d2.getMonth() && d1.getDate() === d2.getDate()
+}
+
+function formatTime(ts) {
+  const d = new Date(ts)
+  return `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`
+}
+
+function formatDate(ts, now) {
+  const d = new Date(ts)
+  if (sameYmd(ts, now)) return `今天 ${formatTime(ts)}`
+  if (sameYmd(ts, now + 86400_000)) return `明天 ${formatTime(ts)}`
+  const daysAhead = Math.round((startOfDay(ts) - startOfDay(now)) / 86400_000)
+  if (daysAhead > 0 && daysAhead < 7) {
+    return `周${ZH_WEEKDAY[d.getDay()]} ${formatTime(ts)}`
+  }
+  return `${d.getMonth() + 1}/${d.getDate()} ${formatTime(ts)}`
+}
+
+function formatRule(rule) {
+  if (rule === 'once') return ''
+  if (rule === 'daily') return '每天'
+  if (rule === 'weekdays') return '工作日'
+  if (rule.startsWith('weekly:')) {
+    const days = rule.slice(7).split(',').map(d => ZH_WEEKDAY_FROM_ENG[d]).join('')
+    return `每周${days}`
+  }
+  if (rule.startsWith('biweekly:')) {
+    return `每两周${ZH_WEEKDAY_FROM_ENG[rule.slice(9)]}`
+  }
+  if (rule.startsWith('monthly:')) {
+    const part = rule.slice(8)
+    return part === 'last' ? '每月最后一天' : `每月 ${part} 号`
+  }
+  if (rule.startsWith('yearly:')) {
+    const [m, d] = rule.slice(7).split('-')
+    return `每年 ${m} 月 ${d} 日`
+  }
+  return ''
+}
+
+/**
+ * @param {{firstAt: number, rule: string, snoozedUntil?: number|null}} reminder
+ * @param {number} [now=Date.now()]
+ * @returns {string}
+ */
+export function formatReminderHuman(reminder, now = Date.now()) {
+  let datePart
+  if (reminder.snoozedUntil) {
+    datePart = `推迟到 ${formatTime(reminder.snoozedUntil)}`
+  } else {
+    datePart = formatDate(reminder.firstAt, now)
+  }
+  const rulePart = formatRule(reminder.rule)
+  return rulePart ? `${datePart} · ${rulePart}` : datePart
+}
