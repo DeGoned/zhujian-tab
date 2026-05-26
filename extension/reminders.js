@@ -357,3 +357,85 @@ export function nextOccurrence(rule, firstAt, now, lastFiredAt = null) {
 
   return null
 }
+
+/**
+ * 镜像 nextOccurrence — 返回 <= now 的最近一次应触发时间，或 null。
+ */
+export function previousOccurrence(rule, firstAt, now) {
+  if (firstAt > now) return null
+
+  if (rule === 'once') return firstAt
+
+  const { h, m } = extractHM(firstAt)
+
+  if (rule === 'daily') {
+    let candidate = setHM(now, h, m)
+    if (candidate > now) candidate = addDays(candidate, -1)
+    return candidate < firstAt ? null : candidate
+  }
+
+  if (rule === 'weekdays') {
+    let candidate = setHM(now, h, m)
+    if (candidate > now) candidate = addDays(candidate, -1)
+    while (new Date(candidate).getDay() === 0 || new Date(candidate).getDay() === 6) {
+      candidate = addDays(candidate, -1)
+    }
+    return candidate < firstAt ? null : candidate
+  }
+
+  if (rule.startsWith('weekly:')) {
+    const dows = rule.slice(7).split(',').map(s => WEEKDAY_ENGLISH_TO_NUM[s])
+    for (let i = 0; i < 8; i++) {
+      const candidate = setHM(addDays(now, -i), h, m)
+      if (candidate > now) continue
+      if (dows.includes(new Date(candidate).getDay())) {
+        return candidate < firstAt ? null : candidate
+      }
+    }
+    return null
+  }
+
+  if (rule.startsWith('biweekly:')) {
+    const targetDow = WEEKDAY_ENGLISH_TO_NUM[rule.slice(9)]
+    const firstDayStart = startOfDay(firstAt)
+    for (let i = 0; i < 21; i++) {
+      const candidate = setHM(addDays(now, -i), h, m)
+      if (candidate > now) continue
+      if (new Date(candidate).getDay() !== targetDow) continue
+      const daysFromFirst = Math.round((startOfDay(candidate) - firstDayStart) / 86400_000)
+      if (daysFromFirst >= 0 && daysFromFirst % 14 === 0) return candidate
+    }
+    return null
+  }
+
+  if (rule.startsWith('monthly:')) {
+    const dayPart = rule.slice(8)
+    let yr = new Date(now).getFullYear()
+    let mo = new Date(now).getMonth()
+    for (let i = 0; i < 13; i++) {
+      const targetMonth = (((mo - i) % 12) + 12) % 12
+      const targetYear = yr + Math.floor((mo - i) / 12)
+      const lastDayOfMonth = new Date(targetYear, targetMonth + 1, 0).getDate()
+      const dayNum = dayPart === 'last' ? lastDayOfMonth : Math.min(+dayPart, lastDayOfMonth)
+      const candidate = localTs(targetYear, targetMonth + 1, dayNum, h, m)
+      if (candidate <= now) return candidate < firstAt ? null : candidate
+    }
+    return null
+  }
+
+  if (rule.startsWith('yearly:')) {
+    const [mStr, dStr] = rule.slice(7).split('-')
+    const monthNum = +mStr
+    const dayNum = +dStr
+    let yr = new Date(now).getFullYear()
+    for (let i = 0; i < 4; i++) {
+      const lastDayOfMonth = new Date(yr - i, monthNum, 0).getDate()
+      const actualDay = Math.min(dayNum, lastDayOfMonth)
+      const candidate = localTs(yr - i, monthNum, actualDay, h, m)
+      if (candidate <= now) return candidate < firstAt ? null : candidate
+    }
+    return null
+  }
+
+  return null
+}

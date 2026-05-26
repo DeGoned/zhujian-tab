@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { nextOccurrence } from '../extension/reminders.js'
+import { nextOccurrence, previousOccurrence } from '../extension/reminders.js'
 
 const at = (y, m, d, h, min = 0) => new Date(y, m - 1, d, h, min, 0).getTime()
 
@@ -145,5 +145,63 @@ describe('nextOccurrence — yearly', () => {
   it('yearly:2-29 — 非闰年妥协到 2/28', () => {
     const firstAt = at(2024, 2, 29, 9, 0)
     expect(nextOccurrence('yearly:2-29', firstAt, at(2024, 3, 1, 10, 0))).toBe(at(2025, 2, 28, 9, 0))
+  })
+})
+
+describe('previousOccurrence — once', () => {
+  it('已过 → firstAt', () => {
+    const firstAt = at(2026, 5, 1, 9, 0)
+    expect(previousOccurrence('once', firstAt, at(2026, 5, 21, 10, 0))).toBe(firstAt)
+  })
+
+  it('未到 → null', () => {
+    const firstAt = at(2026, 6, 1, 9, 0)
+    expect(previousOccurrence('once', firstAt, at(2026, 5, 21, 10, 0))).toBe(null)
+  })
+})
+
+describe('previousOccurrence — daily', () => {
+  it('今天 14:00（11:00 时）→ 昨天 14:00', () => {
+    const firstAt = at(2026, 5, 1, 14, 0)
+    expect(previousOccurrence('daily', firstAt, at(2026, 5, 21, 11, 0))).toBe(at(2026, 5, 20, 14, 0))
+  })
+
+  it('今天 14:00（15:00 时）→ 今天 14:00', () => {
+    const firstAt = at(2026, 5, 1, 14, 0)
+    expect(previousOccurrence('daily', firstAt, at(2026, 5, 21, 15, 0))).toBe(at(2026, 5, 21, 14, 0))
+  })
+
+  it('firstAt 在未来 → null', () => {
+    const firstAt = at(2026, 6, 1, 9, 0)
+    expect(previousOccurrence('daily', firstAt, at(2026, 5, 21, 10, 0))).toBe(null)
+  })
+})
+
+describe('previousOccurrence — weekly', () => {
+  it('weekly:Mon — 今天周四 10:00 → 上周一', () => {
+    const firstAt = at(2026, 5, 4, 9, 0)
+    expect(previousOccurrence('weekly:Mon', firstAt, at(2026, 5, 21, 10, 0))).toBe(at(2026, 5, 18, 9, 0))
+  })
+
+  it('weekly:Mon,Wed,Fri — 今天周四 10:00 → 周三', () => {
+    const firstAt = at(2026, 5, 4, 9, 0)
+    expect(previousOccurrence('weekly:Mon,Wed,Fri', firstAt, at(2026, 5, 21, 10, 0))).toBe(at(2026, 5, 20, 9, 0))
+  })
+})
+
+describe('previousOccurrence — monthly', () => {
+  it('monthly:15 — 今天 5/21 → 5/15', () => {
+    const firstAt = at(2026, 1, 15, 9, 0)
+    expect(previousOccurrence('monthly:15', firstAt, at(2026, 5, 21, 10, 0))).toBe(at(2026, 5, 15, 9, 0))
+  })
+
+  it('monthly:15 — 今天 5/10 → 4/15', () => {
+    const firstAt = at(2026, 1, 15, 9, 0)
+    expect(previousOccurrence('monthly:15', firstAt, at(2026, 5, 10, 10, 0))).toBe(at(2026, 4, 15, 9, 0))
+  })
+
+  it('monthly:last — 今天 5/21 → 4/30', () => {
+    const firstAt = at(2026, 1, 31, 18, 0)
+    expect(previousOccurrence('monthly:last', firstAt, at(2026, 5, 21, 10, 0))).toBe(at(2026, 4, 30, 18, 0))
   })
 })
