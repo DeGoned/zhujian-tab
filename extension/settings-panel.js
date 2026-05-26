@@ -48,6 +48,21 @@ export function wireSettingsPanel() {
       await updateSettings({ nativeCloseAction: r.value })
     })
   })
+
+  // 通知行为：完成确认
+  const cbNotify = document.getElementById('cbNotifyOnComplete')
+  if (cbNotify) {
+    cbNotify.addEventListener('change', async (e) => {
+      await updateSettings({ notifyOnComplete: e.target.checked })
+    })
+  }
+  // 通知行为：默认推迟时长
+  const selSnooze = document.getElementById('selSnoozeMin')
+  if (selSnooze) {
+    selSnooze.addEventListener('change', async (e) => {
+      await updateSettings({ defaultSnoozeMin: +e.target.value })
+    })
+  }
 }
 
 async function refreshPanelState() {
@@ -60,4 +75,8 @@ async function refreshPanelState() {
   document.querySelectorAll('input[name="nativeCloseAction"]').forEach(r => {
     r.checked = r.value === s.nativeCloseAction
   })
+  const cbN = document.getElementById('cbNotifyOnComplete')
+  if (cbN) cbN.checked = !!s.notifyOnComplete
+  const selS = document.getElementById('selSnoozeMin')
+  if (selS) selS.value = String(s.defaultSnoozeMin || 30)
 }

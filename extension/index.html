@@ -173,6 +173,27 @@
   <label><input type="radio" name="nativeCloseAction" value="remove-binding"> 自动移除绑定（todo 保留，URL 从 boundUrls 移除）</label>
   <label><input type="radio" name="nativeCloseAction" value="smart-complete"> 1:1 绑定时自动完成 todo（多对多则保留）</label>
 
+  <h3>🔔 通知行为</h3>
+  <label><input type="checkbox" id="cbNotifyOnComplete"> 完成 todo 时通知确认（默认关）</label>
+  <label>默认推迟时长：
+    <select id="selSnoozeMin">
+      <option value="5">5 分钟</option>
+      <option value="15">15 分钟</option>
+      <option value="30">30 分钟</option>
+      <option value="60">60 分钟</option>
+    </select>
+  </label>
+  <details class="settings-hint-fold">
+    <summary class="hint">系统通知须知</summary>
+    <ul class="hint">
+      <li>Chrome 必须在运行才能弹通知（后台进程在即可，无窗口也行）</li>
+      <li>macOS 系统设置 → 通知 → Google Chrome 必须允许</li>
+      <li>勿扰 / 专注模式下系统会强制静音</li>
+      <li>错过的提醒会在 Chrome 下次启动时聚合通知（最多回溯 7 天）</li>
+      <li>chrome.alarms 不保证准时，可能延后 1-2 分钟</li>
+    </ul>
+  </details>
+
   <h3>快捷键</h3>
   <p class="hint">捕获 todo: <kbd>Cmd+Shift+Space</kbd><br>→ 在 <a href="chrome://extensions/shortcuts" target="_blank" rel="noreferrer">chrome://extensions/shortcuts</a> 修改</p>
 

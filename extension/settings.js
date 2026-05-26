@@ -7,6 +7,8 @@ export const DEFAULT_SETTINGS = {
   soundEnabled: true,
   hotkeyEnabled: true,
   nativeCloseAction: 'keep', // 'remove-binding' | 'keep' | 'smart-complete'
+  notifyOnComplete: false,    // 完成 todo 时是否再弹一条通知确认
+  defaultSnoozeMin: 30,       // 系统通知"😴 推迟"按钮的分钟数（5/15/30/60）
 }
 
 export async function getSettings() {
