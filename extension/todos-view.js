@@ -3,6 +3,7 @@ import { listProjects, searchProjects, createProject } from './projects.js'
 import { parseTodoInput } from './input-parser.js'
 import { attachProjectDropdown } from './project-dropdown.js'
 import { getStorage, KEYS } from './storage.js'
+import { formatReminderHuman, nextOccurrence } from './reminders.js'
 
 const $ = (id) => document.getElementById(id)
 
@@ -74,6 +75,9 @@ function renderTodoLi(t, done = false) {
   const delBtn = !done
     ? `<button class="t-delete" data-id="${t.id}" title="删除">🗑</button>`
     : ''
+  const reminderBtn = !done
+    ? `<button class="t-reminder" data-id="${t.id}" title="提醒" aria-label="提醒">🔔</button>`
+    : ''
   const bindingsHtml = (t.boundUrls && t.boundUrls.length > 0)
     ? `<ul class="bindings">${
         t.boundUrls.map(url => {
@@ -89,6 +93,9 @@ function renderTodoLi(t, done = false) {
         }).join('')
       }</ul>`
     : ''
+  const remindersHtml = (t.reminders && t.reminders.length > 0)
+    ? renderReminderLine(t)
+    : ''
   const rolloverBadge = (!done && t.rolloverCount && t.rolloverCount > 0)
     ? `<span class="rollover-badge ${t.rolloverCount >= 7 ? 'amber' : ''}" title="已拖延 ${t.rolloverCount} 天">+${t.rolloverCount}d</span>`
     : ''
@@ -97,10 +104,23 @@ function renderTodoLi(t, done = false) {
     <span class="t-text">${escapeHtml(t.text)}</span>
     ${rolloverBadge}
     ${addBindBtn}
+    ${reminderBtn}
     ${pinBtn}
     ${delBtn}
+    ${remindersHtml}
     ${bindingsHtml}
   </li>`
+}
+
+function renderReminderLine(todo) {
+  const r = todo.reminders[0]
+  const count = todo.reminders.length
+  // 计算下次实际触发时间（snoozedUntil > nextOccurrence > firstAt fallback）
+  const nextAt = r.snoozedUntil ?? nextOccurrence(r.rule, r.firstAt, Date.now(), r.lastFiredAt) ?? r.firstAt
+  const text = formatReminderHuman({ ...r, firstAt: nextAt }, Date.now())
+  const more = count > 1 ? `<span class="t-rem-count">×${count}</span>` : ''
+  const snoozed = r.snoozedUntil ? ' t-rem-snoozed' : ''
+  return `<div class="t-reminder-line${snoozed}" data-id="${todo.id}">🔔 ${escapeHtml(text)}${more}</div>`
 }
 
 function escapeAttr(s) {
@@ -285,6 +305,24 @@ export function wireTodosView() {
         await setStorage(KEYS.todos, stored)
         await renderTodosView()
       }, 5000)
+      return
+    }
+
+    // Reminder icon → open popover
+    if (e.target.classList.contains('t-reminder')) {
+      e.stopPropagation()
+      const id = e.target.dataset.id
+      const { openReminderPopover } = await import('./reminder-popover.js')
+      await openReminderPopover(id, e.target)
+      return
+    }
+    // Click reminder line below todo → also opens popover (line is the anchor)
+    if (e.target.closest('.t-reminder-line')) {
+      e.stopPropagation()
+      const line = e.target.closest('.t-reminder-line')
+      const id = line.dataset.id
+      const { openReminderPopover } = await import('./reminder-popover.js')
+      await openReminderPopover(id, line)
       return
     }
 

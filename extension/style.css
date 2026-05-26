@@ -2044,3 +2044,35 @@ footer { animation: fadeUp 0.5s ease 0.65s both; }
   color: #fff;
   font-weight: 500;
 }
+
+/* ─── reminder hover icon + reminder line ──────────────────────────────── */
+.t-reminder {
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 120ms;
+  padding: 2px 4px;
+  font-size: 14px;
+}
+.todo-list li:hover .t-reminder { opacity: 0.7; }
+.t-reminder:hover { opacity: 1; }
+.t-reminder-line {
+  flex-basis: 100%;
+  font-size: 12px;
+  color: #6b7280;
+  margin-top: 2px;
+  padding-left: 28px;
+  cursor: pointer;
+}
+.t-reminder-line.t-rem-snoozed { color: #d97706; font-weight: 500; }
+.t-reminder-line:hover { color: #4f46e5; }
+.t-rem-count {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  background: #ede9fe;
+  color: #4f46e5;
+  border-radius: 8px;
+  font-size: 10px;
+}
