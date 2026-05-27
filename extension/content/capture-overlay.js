@@ -6,7 +6,7 @@
   overlay.id = 'tabout-capture-overlay'
   overlay.innerHTML = `
     <div id="tabout-capture-box" role="dialog" aria-label="Quick capture todo">
-      <div class="tabout-label">Quick Capture · Tab Out + Todo</div>
+      <div class="tabout-label">Quick Capture · zhujian-tab</div>
       <input id="tabout-capture-input" type="text" placeholder="输入待办，#项目名 可选..." autocomplete="off" />
       <div id="tabout-capture-meta">
         <label>

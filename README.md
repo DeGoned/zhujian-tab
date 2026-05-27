@@ -1,6 +1,6 @@
-# Tab Out + Todo
+# zhujian-tab
 
-Tab Out（by [Zara](https://github.com/zarazhangrui/tab-out)）的 fork，在原 tab 管理功能基础上扩展待办管理：深度绑定 tab、今日 + 项目双 view、全局快捷键捕获。
+[tab-out](https://github.com/zarazhangrui/tab-out)（by Zara）的 fork — 在原 tab 仪表盘基础上扩展待办管理 + Mac 系统通知提醒。
 
 替换浏览器新标签页，每次开新标签都同时看到 tabs 和 todos。
 

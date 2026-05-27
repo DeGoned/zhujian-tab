@@ -1,4 +1,4 @@
-// Tab Out + Todo extensions — static imports for service worker (MV3 module)
+// zhujian-tab extensions — static imports for service worker (MV3 module)
 import { createTodo, listTodos, updateTodo, completeTodo, completeReminderCycle, snoozeReminder, updateReminder, addReminder } from './todos.js'
 import { nextOccurrence, previousOccurrence } from './reminders.js'
 import { searchProjects, createProject } from './projects.js'
@@ -100,7 +100,7 @@ chrome.tabs.onUpdated.addListener((tabId, _changeInfo, tab) => {
 updateBadge();
 
 // ============================================================
-// Tab Out + Todo — global hotkey capture flow
+// zhujian-tab — global hotkey capture flow
 // ============================================================
 
 chrome.commands.onCommand.addListener(async (command) => {
@@ -128,7 +128,7 @@ chrome.commands.onCommand.addListener(async (command) => {
 })
 
 // ============================================================
-// Tab Out + Todo — browser-native close detection + toast broadcast
+// zhujian-tab — browser-native close detection + toast broadcast
 // ============================================================
 
 import { urlIsBound, getTodosBoundToUrl } from './binding.js'
@@ -293,7 +293,7 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
       iconUrl: 'icons/icon128.png',
       title: todo.text.slice(0, 50) || '提醒',
       message: '',
-      contextMessage: 'Tab Out + Todo',
+      contextMessage: 'zhujian-tab',
       buttons: [
         { title: '✅ 完成' },
         { title: `😴 推迟 ${snoozeMin} 分钟` },
@@ -385,7 +385,7 @@ async function catchupMissed() {
       iconUrl: 'icons/icon128.png',
       title: `🔔 你有 ${missed.length} 条错过的提醒`,
       message: titles + (missed.length > 3 ? '...' : ''),
-      contextMessage: 'Tab Out + Todo',
+      contextMessage: 'zhujian-tab',
       priority: 1,
     })
   } catch (e) {

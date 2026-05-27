@@ -1,8 +1,8 @@
 {
-  "name": "tab-out-todo",
-  "version": "1.0.0",
+  "name": "zhujian-tab",
+  "version": "1.1.0",
   "private": true,
-  "description": "Tab Out + Todo Chrome extension (dev-only npm; extension itself has zero runtime deps)",
+  "description": "zhujian-tab — Chrome extension: tab dashboard + todos + Mac notifications. Fork of tab-out. Dev-only npm; extension itself has zero runtime deps.",
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest"
