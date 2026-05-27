@@ -71,9 +71,13 @@ export async function openReminderPopover(todoId, anchorEl) {
     })
   }
   refresh()
+  // 必须先 unhide 才能用 offsetWidth/Height 实测定位（hidden 元素这俩返回 0）
+  const p = document.getElementById('reminderPopover')
+  p.style.visibility = 'hidden'   // 测量期不闪
+  p.hidden = false
   positionPopover(anchorEl)
+  p.style.visibility = ''
   if (!_wired) wirePopover()
-  document.getElementById('reminderPopover').hidden = false
 }
 
 export function closeReminderPopover() {
@@ -86,19 +90,33 @@ export function closeReminderPopover() {
 function positionPopover(anchorEl) {
   const p = document.getElementById('reminderPopover')
   const rect = anchorEl.getBoundingClientRect()
-  // 默认在 anchor 下方；底部超界时翻到上方
-  let top = rect.bottom + window.scrollY + 4
-  const left = Math.min(rect.left + window.scrollX, window.innerWidth - 380)
   p.style.position = 'absolute'
+
+  // 先临时放置以便测量实际尺寸（前提：caller 已 unhide）
+  p.style.top = '0px'
+  p.style.left = '0px'
+  const popW = p.offsetWidth
+  const popH = p.offsetHeight
+
+  // 默认 anchor 下方 + anchor 左对齐
+  let top = rect.bottom + window.scrollY + 4
+  let left = rect.left + window.scrollX
+
+  // 右边超界：从右侧 8px 边距倒推
+  if (left + popW > window.innerWidth - 8) {
+    left = window.innerWidth - popW - 8
+  }
+  // 左边超界
+  if (left < 8) left = 8
+  // 下边超界：翻到 anchor 上方
+  if (top + popH > window.innerHeight + window.scrollY - 8) {
+    top = rect.top + window.scrollY - popH - 4
+  }
+  // 上边也超界（极少见，整个 anchor 太大）：钉在视口顶部
+  if (top < window.scrollY + 8) top = window.scrollY + 8
+
   p.style.top = top + 'px'
-  p.style.left = Math.max(8, left) + 'px'
-  // 翻转
-  requestAnimationFrame(() => {
-    const pRect = p.getBoundingClientRect()
-    if (pRect.bottom > window.innerHeight - 8) {
-      p.style.top = (rect.top + window.scrollY - pRect.height - 4) + 'px'
-    }
-  })
+  p.style.left = left + 'px'
 }
 
 function wirePopover() {

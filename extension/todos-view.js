@@ -147,7 +147,7 @@ function renderProjectCard(p, todos) {
   const completed = todos.filter(t => t.status === 'done')
   return `
     <div class="project-card" data-id="${p.id}" data-color="${p.color}">
-      <button class="p-menu" data-id="${p.id}" title="项目操作">⋯</button>
+      <button class="p-menu" data-id="${p.id}" title="删除项目" aria-label="删除项目">🗑</button>
       <div class="project-name">${escapeHtml(p.name)}</div>
       <ul class="todo-list">
         ${pending.map(t => renderTodoLi(t)).join('')}

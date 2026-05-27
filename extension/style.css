@@ -1832,27 +1832,26 @@ footer { animation: fadeUp 0.5s ease 0.65s both; }
   background: white;
 }
 
-/* Project card ⋯ menu — 默认可见，跟 .p-unarchive 同款可发现性原则 */
+/* Project card 🗑 删除按钮 — 默认可见 + 红色 hover affordance（区别于 ⭐ ☐ 等中性 todo 控件） */
 .project-card .p-menu {
   position: absolute;
   top: 8px;
   right: 8px;
-  opacity: 0.5;
+  opacity: 0.55;
   background: transparent;
   border: none;
-  font-size: 16px;
+  font-size: 14px;
   cursor: pointer;
-  color: #6b7280;
-  padding: 2px 8px;
+  padding: 4px 6px;
   line-height: 1;
   border-radius: 4px;
-  transition: opacity 0.15s, color 0.15s, background 0.15s;
+  transition: opacity 0.15s, background 0.15s, transform 0.15s;
 }
-.project-card:hover .p-menu { opacity: 0.8; }
+.project-card:hover .p-menu { opacity: 0.85; }
 .project-card .p-menu:hover {
   opacity: 1 !important;
-  color: #111;
-  background: rgba(124, 58, 237, 0.08);
+  background: rgba(220, 38, 38, 0.1);
+  transform: scale(1.1);
 }
 .project-card { position: relative; }
 
@@ -1981,7 +1980,8 @@ footer { animation: fadeUp 0.5s ease 0.65s both; }
   border-radius: 12px;
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
   padding: 16px;
-  min-width: 360px;
+  min-width: 400px;                       /* 给"工作日（周一~五）"select 留够宽 */
+  max-width: calc(100vw - 16px);          /* 防御：永远不超视口 */
   font-family: 'DM Sans', sans-serif;
 }
 .reminder-popover .rp-header {
