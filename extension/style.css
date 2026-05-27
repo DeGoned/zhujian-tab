@@ -1832,23 +1832,28 @@ footer { animation: fadeUp 0.5s ease 0.65s both; }
   background: white;
 }
 
-/* Project card ⋯ menu */
+/* Project card ⋯ menu — 默认可见，跟 .p-unarchive 同款可发现性原则 */
 .project-card .p-menu {
   position: absolute;
   top: 8px;
   right: 8px;
-  opacity: 0;
+  opacity: 0.5;
   background: transparent;
   border: none;
-  font-size: 14px;
+  font-size: 16px;
   cursor: pointer;
-  color: #999;
-  padding: 2px 6px;
+  color: #6b7280;
+  padding: 2px 8px;
   line-height: 1;
-  transition: opacity 0.15s, color 0.15s;
+  border-radius: 4px;
+  transition: opacity 0.15s, color 0.15s, background 0.15s;
 }
-.project-card:hover .p-menu { opacity: 0.55; }
-.project-card .p-menu:hover { opacity: 1 !important; color: #111; }
+.project-card:hover .p-menu { opacity: 0.8; }
+.project-card .p-menu:hover {
+  opacity: 1 !important;
+  color: #111;
+  background: rgba(124, 58, 237, 0.08);
+}
 .project-card { position: relative; }
 
 /* Undo toast bottom-center */
