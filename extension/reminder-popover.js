@@ -1,6 +1,7 @@
 // extension/reminder-popover.js
 import { listTodos, addReminder, updateReminder, removeReminder } from './todos.js'
 import { formatReminderHuman } from './reminders.js'
+import { showToast } from './ui.js'
 
 let _todoId = null
 let _draft = []  // [{id?, firstAt, rule, _new?, _deleted?}]
@@ -143,14 +144,40 @@ function wirePopover() {
 async function save() {
   const tid = _todoId
   if (!tid) return
+  // 累计本次保存后还活着的 reminder（用于 toast）
+  const alive = []
+  let anyChange = false
   for (const item of _draft) {
     if (item._deleted && item.id) {
       await removeReminder(tid, item.id)
+      anyChange = true
     } else if (item._new) {
-      await addReminder(tid, { firstAt: item.firstAt, rule: item.rule })
+      const r = await addReminder(tid, { firstAt: item.firstAt, rule: item.rule })
+      alive.push(r)
+      anyChange = true
     } else if (item.id) {
-      await updateReminder(tid, item.id, { firstAt: item.firstAt, rule: item.rule })
+      // 已有 reminder — 比较是否真改了
+      const orig = (await listTodos()).find(t => t.id === tid)?.reminders?.find(r => r.id === item.id)
+      const changed = !orig || orig.firstAt !== item.firstAt || orig.rule !== item.rule
+      if (changed) {
+        const r = await updateReminder(tid, item.id, { firstAt: item.firstAt, rule: item.rule })
+        if (r) alive.push(r)
+        anyChange = true
+      } else if (orig) {
+        alive.push(orig)
+      }
     }
   }
   closeReminderPopover()
+  // toast 反馈
+  if (anyChange) {
+    if (alive.length === 0) {
+      showToast('🔔 已清除全部提醒')
+    } else {
+      const sorted = [...alive].sort((a, b) => a.firstAt - b.firstAt)
+      const earliest = sorted[0]
+      const when = formatReminderHuman(earliest, Date.now())
+      showToast(alive.length === 1 ? `🔔 提醒已设置：${when}` : `🔔 ${alive.length} 条提醒，最早 ${when}`)
+    }
+  }
 }

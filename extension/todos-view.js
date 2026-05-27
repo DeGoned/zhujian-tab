@@ -1,9 +1,24 @@
-import { listTodos, listTodayTodos, createTodo } from './todos.js'
+import { listTodos, listTodayTodos, createTodo, addReminder } from './todos.js'
 import { listProjects, searchProjects, createProject } from './projects.js'
 import { parseTodoInput } from './input-parser.js'
 import { attachProjectDropdown } from './project-dropdown.js'
 import { getStorage, KEYS } from './storage.js'
 import { formatReminderHuman, nextOccurrence } from './reminders.js'
+import { showToast } from './ui.js'
+
+/**
+ * 生成"已设提醒"toast 文案。
+ * @param {Array<{firstAt: number, rule: string}>} reminders 创建/保存的 reminder 数组（非空）
+ * @returns {string}
+ */
+function buildReminderToast(reminders) {
+  // 找最早一条
+  const sorted = [...reminders].sort((a, b) => a.firstAt - b.firstAt)
+  const earliest = sorted[0]
+  const when = formatReminderHuman(earliest, Date.now())
+  if (reminders.length === 1) return `🔔 提醒已设置：${when}`
+  return `🔔 已设 ${reminders.length} 条提醒，最早 ${when}`
+}
 
 const $ = (id) => document.getElementById(id)
 
@@ -155,7 +170,7 @@ export function wireTodosInput() {
     if (e.defaultPrevented) return  // 下拉已处理（选了一项），跳过提交
     const raw = input.value
     if (!raw.trim()) return
-    const { text, projectName } = parseTodoInput(raw)
+    const { text, projectName, reminders } = parseTodoInput(raw)
     let projectId = null
     if (projectName) {
       const matches = await searchProjects(projectName)
@@ -164,7 +179,14 @@ export function wireTodosInput() {
       projectId = p.id
     }
     if (!text) return  // 只有 # 没有文本时不创建（用户多半在打字中途）
-    await createTodo({ text, projectId })
+    const todo = await createTodo({ text, projectId })
+    // Wire 通过 inline @time ~repeat 解析出的 reminders → 真正建 alarm
+    if (reminders && reminders.length > 0) {
+      for (const r of reminders) {
+        await addReminder(todo.id, { firstAt: r.firstAt, rule: r.rule })
+      }
+      showToast(buildReminderToast(reminders))
+    }
     input.value = ''
     await renderTodosView()
     input.focus()

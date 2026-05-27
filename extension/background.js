@@ -1,5 +1,5 @@
 // Tab Out + Todo extensions — static imports for service worker (MV3 module)
-import { createTodo, listTodos, updateTodo, completeTodo, completeReminderCycle, snoozeReminder, updateReminder } from './todos.js'
+import { createTodo, listTodos, updateTodo, completeTodo, completeReminderCycle, snoozeReminder, updateReminder, addReminder } from './todos.js'
 import { nextOccurrence, previousOccurrence } from './reminders.js'
 import { searchProjects, createProject } from './projects.js'
 import { rememberUrlTitle } from './binding.js'
@@ -217,7 +217,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (!msg || msg.type !== 'capture') return false
   ;(async () => {
     try {
-      const { text, projectName } = parseTodoInput(msg.text || '')
+      const { text, projectName, reminders } = parseTodoInput(msg.text || '')
       let projectId = null
       if (projectName) {
         const m = await searchProjects(projectName)
@@ -229,12 +229,18 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         return
       }
       if (msg.url) await rememberUrlTitle(msg.url, msg.title || '')
-      await createTodo({
+      const todo = await createTodo({
         text,
         projectId,
         boundUrls: msg.url ? [msg.url] : [],
       })
-      sendResponse({ ok: true })
+      // Wire inline reminders（capture overlay 通过全局快捷键也走这条路）
+      if (reminders && reminders.length > 0) {
+        for (const r of reminders) {
+          await addReminder(todo.id, { firstAt: r.firstAt, rule: r.rule })
+        }
+      }
+      sendResponse({ ok: true, reminderCount: reminders.length })
     } catch (e) {
       console.warn('Tab Out: capture handler failed', e)
       sendResponse({ ok: false, reason: String(e) })
