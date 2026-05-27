@@ -1,7 +1,7 @@
 // zhujian-tab extensions — static imports for service worker (MV3 module)
 import { createTodo, listTodos, updateTodo, completeTodo, completeReminderCycle, snoozeReminder, updateReminder, addReminder } from './todos.js'
 import { nextOccurrence, previousOccurrence } from './reminders.js'
-import { searchProjects, createProject } from './projects.js'
+import { searchProjects, createProject, listProjects } from './projects.js'
 import { rememberUrlTitle } from './binding.js'
 import { parseTodoInput } from './input-parser.js'
 import { getSettings } from './settings.js'
@@ -286,6 +286,16 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
   const settings = await getSettings()
   const snoozeMin = settings.defaultSnoozeMin || 30
 
+  // 第二行优先显示项目名（有项目时），无项目时 fallback 到扩展名
+  let subtitle = 'zhujian-tab'
+  if (todo.projectId) {
+    try {
+      const projects = await listProjects({ includeArchived: true })
+      const proj = projects.find(p => p.id === todo.projectId)
+      if (proj && proj.name) subtitle = proj.name
+    } catch (_) { /* fallback to 'zhujian-tab' on read error */ }
+  }
+
   // 弹通知
   try {
     chrome.notifications.create(reminder.id, {
@@ -293,7 +303,7 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
       iconUrl: 'icons/icon128.png',
       title: todo.text.slice(0, 50) || '提醒',
       message: '',
-      contextMessage: 'zhujian-tab',
+      contextMessage: subtitle,
       buttons: [
         { title: '✅ 完成' },
         { title: `😴 推迟 ${snoozeMin} 分钟` },
