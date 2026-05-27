@@ -45,4 +45,14 @@ describe('parseTodoInput — 加 @reminder + ~repeat', () => {
     const r = parseTodoInput('做事 #work', REM_NOW)
     expect(r.reminders).toEqual([])
   })
+
+  // Bug regression: v1.1.0 用户报告
+  it('REGRESSION: "测试#井大访客 @今天下午三点" — 时间词不该被吞进项目名', () => {
+    const r = parseTodoInput('测试#井大访客 @今天下午三点', REM_NOW)
+    expect(r.text).toBe('测试')
+    expect(r.projectName).toBe('井大访客')
+    expect(r.reminders).toHaveLength(1)
+    expect(r.reminders[0].firstAt).toBe(remAt(2026, 5, 21, 15, 0))
+    expect(r.reminders[0].rule).toBe('once')
+  })
 })

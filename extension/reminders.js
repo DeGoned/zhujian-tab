@@ -48,6 +48,87 @@ function todayOrTomorrowAt(now, h, m) {
   return t
 }
 
+// 中文数字字典（含变体）
+const CN_DIGIT = {
+  '零': 0, '一': 1, '二': 2, '三': 3, '四': 4,
+  '五': 5, '六': 6, '七': 7, '八': 8, '九': 9,
+  '十': 10, '两': 2,
+}
+
+/**
+ * 把中文 / 阿拉伯数字字符串（0-99）解析为 number，失败返回 null。
+ * 支持：'3' '三' '10' '十' '十一' '二十' '二十三' '30' '四十五' '两'。
+ *
+ * @param {string} str
+ * @returns {number | null}
+ */
+function parseCnNum(str) {
+  if (str == null) return null
+  if (/^\d+$/.test(str)) return parseInt(str, 10)
+  if (str.length === 1) return CN_DIGIT[str] ?? null
+  // 十X（10-19）
+  if (str[0] === '十') {
+    const tail = CN_DIGIT[str[1]]
+    return (tail !== undefined && tail < 10) ? 10 + tail : null
+  }
+  // X十(Y)（20-99）
+  const mm = str.match(/^([一二三四五六七八九两])十([一二三四五六七八九])?$/)
+  if (mm) {
+    const tens = CN_DIGIT[mm[1]] * 10
+    const ones = mm[2] ? CN_DIGIT[mm[2]] : 0
+    return tens + ones
+  }
+  return null
+}
+
+/**
+ * 试匹配"时分"片段：HH:MM 或 (上午|下午|晚上)?N点M?(钟|整)?。
+ * 接受中文与阿拉伯数字混合，分钟可用"半" = 30。
+ *
+ * @param {string} sub
+ * @param {'上午'|'下午'|'晚上'|null} [defaultPeriod] 当用户没写上下午时的默认 period
+ *   （例：日期前缀是"今晚"时传 '晚上'，让"今晚九点"识别为 21:00 而不是 9:00）
+ *   HH:MM 格式是显式的，不受 defaultPeriod 影响。
+ * @returns {{ h: number, m: number, matchLength: number } | null}
+ */
+function tryParseTimeOfDay(sub, defaultPeriod = null) {
+  // 1) HH:MM（仅阿拉伯，显式时间不应用 defaultPeriod）
+  let m = sub.match(/^(\d{1,2}):(\d{2})\b/)
+  if (m) return { h: +m[1], m: +m[2], matchLength: m[0].length }
+
+  // 2) (上午|下午|晚上)? + 数字(中/阿) + 点 + (数字(中/阿)|半)? + (钟|整)?
+  m = sub.match(/^(上午|下午|晚上)?\s*(\d{1,2}|[零一二三四五六七八九十两]{1,3})\s*点\s*(\d{1,2}|[零一二三四五六七八九十两]{1,3}|半)?\s*[钟整]?/)
+  if (m) {
+    const hour = parseCnNum(m[2])
+    if (hour === null) return null
+    const period = m[1] || defaultPeriod
+    const h24 = period ? to24h(period, hour) : hour
+    let min = 0
+    if (m[3] === '半') min = 30
+    else if (m[3] != null) {
+      const n = parseCnNum(m[3])
+      if (n !== null) min = n
+    }
+    return { h: h24, m: min, matchLength: m[0].length }
+  }
+  return null
+}
+
+/**
+ * 日期模式 match 后，接力消费可选的"空白 + 时分"。
+ * 没匹配到时返回默认 {h:9, m:0, matchLength:0}（不吃任何字符）。
+ *
+ * @param {string} rest 日期 match 之后剩下的字符
+ * @returns {{ h: number, m: number, matchLength: number }}
+ */
+function consumeOptionalTime(rest) {
+  const wsMatch = rest.match(/^\s+/)
+  const wsLen = wsMatch ? wsMatch[0].length : 0
+  const tod = tryParseTimeOfDay(rest.slice(wsLen))
+  if (tod) return { h: tod.h, m: tod.m, matchLength: wsLen + tod.matchLength }
+  return { h: 9, m: 0, matchLength: 0 }
+}
+
 /**
  * 解析时间子串 → { firstAt, matchLength } 或 null。
  * sub 是从 '@' 之后开始的字符串。
@@ -59,57 +140,68 @@ function todayOrTomorrowAt(now, h, m) {
  * @returns {{ firstAt: number, matchLength: number } | null}
  */
 function tryParseTimeSub(sub, now) {
-  // 1. @YYYY-MM-DD HH:MM
-  let m = sub.match(/^(\d{4})-(\d{1,2})-(\d{1,2})\s+(\d{1,2}):(\d{2})\b/)
+  // 1. @YYYY-MM-DD [time]?
+  let m = sub.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/)
   if (m) {
-    return { firstAt: localTs(+m[1], +m[2], +m[3], +m[4], +m[5]), matchLength: m[0].length }
-  }
-  // 2. @YYYY-MM-DD
-  m = sub.match(/^(\d{4})-(\d{1,2})-(\d{1,2})\b/)
-  if (m) return { firstAt: localTs(+m[1], +m[2], +m[3], 9, 0), matchLength: m[0].length }
-
-  // 3. @M/D HH:MM / @M/D
-  m = sub.match(/^(\d{1,2})\/(\d{1,2})(?:\s+(\d{1,2}):(\d{2}))?\b/)
-  if (m) {
-    const d = new Date(now)
-    let yr = d.getFullYear()
-    let ts = localTs(yr, +m[1], +m[2], m[3] ? +m[3] : 9, m[4] ? +m[4] : 0)
-    if (ts <= now) ts = localTs(yr + 1, +m[1], +m[2], m[3] ? +m[3] : 9, m[4] ? +m[4] : 0)
-    return { firstAt: ts, matchLength: m[0].length }
-  }
-
-  // 4. @M月D日 HH:MM?
-  m = sub.match(/^(\d{1,2})月(\d{1,2})日(?:\s+(\d{1,2}):(\d{2}))?/)
-  if (m) {
-    const d = new Date(now)
-    let yr = d.getFullYear()
-    let ts = localTs(yr, +m[1], +m[2], m[3] ? +m[3] : 9, m[4] ? +m[4] : 0)
-    if (ts <= now) ts = localTs(yr + 1, +m[1], +m[2], m[3] ? +m[3] : 9, m[4] ? +m[4] : 0)
-    return { firstAt: ts, matchLength: m[0].length }
-  }
-
-  // 5. @(明天|后天|大后天) HH:MM?
-  m = sub.match(/^(明天|后天|大后天)(?:\s+(\d{1,2}):(\d{2}))?/)
-  if (m) {
-    const offset = { '明天': 1, '后天': 2, '大后天': 3 }[m[1]]
-    const d = new Date(now); d.setDate(d.getDate() + offset)
+    const consumed = m[0].length
+    const t = consumeOptionalTime(sub.slice(consumed))
     return {
-      firstAt: localTs(d.getFullYear(), d.getMonth() + 1, d.getDate(), m[2] ? +m[2] : 9, m[3] ? +m[3] : 0),
-      matchLength: m[0].length,
+      firstAt: localTs(+m[1], +m[2], +m[3], t.h, t.m),
+      matchLength: consumed + t.matchLength,
     }
   }
 
-  // 6. @(今天|今晚) HH:MM?
-  m = sub.match(/^(今天|今晚)(?:\s+(\d{1,2}):(\d{2}))?/)
+  // 2. @M/D [time]?
+  m = sub.match(/^(\d{1,2})\/(\d{1,2})/)
   if (m) {
-    const defaultHour = m[1] === '今晚' ? 20 : 9
-    const h = m[2] ? +m[2] : defaultHour
-    const min = m[3] ? +m[3] : 0
-    return { firstAt: todayOrTomorrowAt(now, h, min), matchLength: m[0].length }
+    const consumed = m[0].length
+    const t = consumeOptionalTime(sub.slice(consumed))
+    const d = new Date(now); const yr = d.getFullYear()
+    let ts = localTs(yr, +m[1], +m[2], t.h, t.m)
+    if (ts <= now) ts = localTs(yr + 1, +m[1], +m[2], t.h, t.m)
+    return { firstAt: ts, matchLength: consumed + t.matchLength }
   }
 
-  // 7. @(下|下下)?(周|星期)X HH:MM?
-  m = sub.match(/^(下下|下)?(周|星期)([一二三四五六日天])(?:\s+(\d{1,2}):(\d{2}))?/)
+  // 3. @M月D日 [time]?
+  m = sub.match(/^(\d{1,2})月(\d{1,2})日/)
+  if (m) {
+    const consumed = m[0].length
+    const t = consumeOptionalTime(sub.slice(consumed))
+    const d = new Date(now); const yr = d.getFullYear()
+    let ts = localTs(yr, +m[1], +m[2], t.h, t.m)
+    if (ts <= now) ts = localTs(yr + 1, +m[1], +m[2], t.h, t.m)
+    return { firstAt: ts, matchLength: consumed + t.matchLength }
+  }
+
+  // 4. @(明天|后天|大后天) [time]?
+  m = sub.match(/^(明天|后天|大后天)/)
+  if (m) {
+    const offset = { '明天': 1, '后天': 2, '大后天': 3 }[m[1]]
+    const d = new Date(now); d.setDate(d.getDate() + offset)
+    const consumed = m[0].length
+    const t = consumeOptionalTime(sub.slice(consumed))
+    return {
+      firstAt: localTs(d.getFullYear(), d.getMonth() + 1, d.getDate(), t.h, t.m),
+      matchLength: consumed + t.matchLength,
+    }
+  }
+
+  // 5. @(今天|今晚) [time]?  —— 今晚默认 20:00 且把 '晚上' 作为后续"X点"的默认 period
+  m = sub.match(/^(今天|今晚)/)
+  if (m) {
+    const isYowan = m[1] === '今晚'
+    const consumed = m[0].length
+    const wsMatch = sub.slice(consumed).match(/^\s+/)
+    const wsLen = wsMatch ? wsMatch[0].length : 0
+    const tod = tryParseTimeOfDay(sub.slice(consumed + wsLen), isYowan ? '晚上' : null)
+    const h = tod ? tod.h : (isYowan ? 20 : 9)
+    const min = tod ? tod.m : 0
+    const matchLen = consumed + (tod ? wsLen + tod.matchLength : 0)
+    return { firstAt: todayOrTomorrowAt(now, h, min), matchLength: matchLen }
+  }
+
+  // 6. @(下下|下)?(周|星期)X [time]?
+  m = sub.match(/^(下下|下)?(周|星期)([一二三四五六日天])/)
   if (m) {
     const targetDow = WEEKDAY_MAP[m[3]]
     const d = new Date(now)
@@ -117,10 +209,8 @@ function tryParseTimeSub(sub, now) {
     let daysAhead
     if (m[1] === '下' || m[1] === '下下') {
       // 下/下下 → 锚定到下/下下周（ISO 周一开始）的目标星期
-      // 本周一相对今天的偏移：周日(0)按 -6，否则 1-today
       const daysToThisMonday = today === 0 ? -6 : 1 - today
       const weekOffset = m[1] === '下下' ? 14 : 7
-      // 目标 dow 在 Mon-Sun 排序中的位置（Mon=0 ... Sun=6）
       const offsetInWeek = targetDow === 0 ? 6 : targetDow - 1
       daysAhead = daysToThisMonday + weekOffset + offsetInWeek
     } else {
@@ -129,43 +219,35 @@ function tryParseTimeSub(sub, now) {
       if (daysAhead === 0) daysAhead = 7
     }
     d.setDate(d.getDate() + daysAhead)
+    const consumed = m[0].length
+    const t = consumeOptionalTime(sub.slice(consumed))
     return {
-      firstAt: localTs(d.getFullYear(), d.getMonth() + 1, d.getDate(), m[4] ? +m[4] : 9, m[5] ? +m[5] : 0),
-      matchLength: m[0].length,
+      firstAt: localTs(d.getFullYear(), d.getMonth() + 1, d.getDate(), t.h, t.m),
+      matchLength: consumed + t.matchLength,
     }
   }
 
-  // 8. @(上午|下午|晚上)N 点 M?
-  m = sub.match(/^(上午|下午|晚上)\s*(\d{1,2})\s*点\s*(\d{1,2})?/)
+  // 7. @N(小时|分钟|天)后 [time]?  —— 仅 '天' 接受时间后缀
+  m = sub.match(/^(\d+)\s*(小时|分钟|天)后/)
   if (m) {
-    const h = to24h(m[1], +m[2])
-    const min = m[3] ? +m[3] : 0
-    return { firstAt: todayOrTomorrowAt(now, h, min), matchLength: m[0].length }
-  }
-
-  // 9. @N(小时|分钟|天)后 HH:MM?
-  m = sub.match(/^(\d+)\s*(小时|分钟|天)后(?:\s+(\d{1,2}):(\d{2}))?/)
-  if (m) {
-    const n = +m[1]
-    const unit = m[2]
+    const n = +m[1]; const unit = m[2]; const consumed = m[0].length
     if (unit === '天') {
       const d = new Date(now); d.setDate(d.getDate() + n)
+      const t = consumeOptionalTime(sub.slice(consumed))
       return {
-        firstAt: localTs(d.getFullYear(), d.getMonth() + 1, d.getDate(), m[3] ? +m[3] : 9, m[4] ? +m[4] : 0),
-        matchLength: m[0].length,
+        firstAt: localTs(d.getFullYear(), d.getMonth() + 1, d.getDate(), t.h, t.m),
+        matchLength: consumed + t.matchLength,
       }
     }
     const ms = unit === '小时' ? n * 3600_000 : n * 60_000
-    return { firstAt: now + ms, matchLength: m[0].length }
+    return { firstAt: now + ms, matchLength: consumed }
   }
 
-  // 10. @HH:MM
-  m = sub.match(/^(\d{1,2}):(\d{2})\b/)
-  if (m) return { firstAt: todayOrTomorrowAt(now, +m[1], +m[2]), matchLength: m[0].length }
-
-  // 11. @N 点 M?
-  m = sub.match(/^(\d{1,2})\s*点\s*(\d{1,2})?/)
-  if (m) return { firstAt: todayOrTomorrowAt(now, +m[1], m[2] ? +m[2] : 0), matchLength: m[0].length }
+  // 8. @[standalone time-of-day]  —— HH:MM / N点M / 上午下午晚上+N点M
+  const tod = tryParseTimeOfDay(sub)
+  if (tod) {
+    return { firstAt: todayOrTomorrowAt(now, tod.h, tod.m), matchLength: tod.matchLength }
+  }
 
   return null
 }

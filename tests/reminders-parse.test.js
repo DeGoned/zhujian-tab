@@ -246,3 +246,99 @@ describe('parseReminderInline — 重复规则', () => {
     expect(r.reminders[0].rule).toBe('once')
   })
 })
+
+describe('parseReminderInline — 日期+中文时间 复合（bug fix）', () => {
+  it('用户报告 bug: @今天下午三点 应整体识别为今天 15:00', () => {
+    const r = parseReminderInline('测试 @今天下午三点', NOW)
+    expect(r.cleanText).toBe('测试')
+    expect(r.reminders).toEqual([{ firstAt: at(2026, 5, 21, 15, 0), rule: 'once' }])
+  })
+
+  it('@今天下午3点 (mixed arabic)', () => {
+    const r = parseReminderInline('测试 @今天下午3点', NOW)
+    expect(r.cleanText).toBe('测试')
+    expect(r.reminders[0].firstAt).toBe(at(2026, 5, 21, 15, 0))
+  })
+
+  it('@今天下午3点30 (mixed arabic + minutes)', () => {
+    const r = parseReminderInline('测试 @今天下午3点30', NOW)
+    expect(r.reminders[0].firstAt).toBe(at(2026, 5, 21, 15, 30))
+  })
+
+  it('@今天下午三点半 (中文 + 半)', () => {
+    const r = parseReminderInline('测试 @今天下午三点半', NOW)
+    expect(r.reminders[0].firstAt).toBe(at(2026, 5, 21, 15, 30))
+  })
+
+  it('@明天上午9点 → 明天 9:00', () => {
+    const r = parseReminderInline('测试 @明天上午9点', NOW)
+    expect(r.reminders[0].firstAt).toBe(at(2026, 5, 22, 9, 0))
+  })
+
+  it('@明天晚上8点 → 明天 20:00', () => {
+    const r = parseReminderInline('测试 @明天晚上8点', NOW)
+    expect(r.reminders[0].firstAt).toBe(at(2026, 5, 22, 20, 0))
+  })
+
+  it('@周一下午2点 → 下周一 14:00', () => {
+    const r = parseReminderInline('测试 @周一下午2点', NOW)
+    expect(r.reminders[0].firstAt).toBe(at(2026, 5, 25, 14, 0))
+  })
+
+  it('@今晚九点 → 今天 21:00', () => {
+    const r = parseReminderInline('测试 @今晚九点', NOW)
+    expect(r.reminders[0].firstAt).toBe(at(2026, 5, 21, 21, 0))
+  })
+
+  it('@5月25日下午4点 (no space)', () => {
+    const r = parseReminderInline('婚礼 @5月25日下午4点', NOW)
+    expect(r.reminders[0].firstAt).toBe(at(2026, 5, 25, 16, 0))
+  })
+
+  it('@5/25下午4点 (no space)', () => {
+    const r = parseReminderInline('婚礼 @5/25下午4点', NOW)
+    expect(r.reminders[0].firstAt).toBe(at(2026, 5, 25, 16, 0))
+  })
+})
+
+describe('parseReminderInline — 中文数字独立时间', () => {
+  it('@下午两点 (两=2)', () => {
+    const r = parseReminderInline('测试 @下午两点', NOW)
+    expect(r.reminders[0].firstAt).toBe(at(2026, 5, 21, 14, 0))
+  })
+
+  it('@晚上十点', () => {
+    const r = parseReminderInline('测试 @晚上十点', NOW)
+    expect(r.reminders[0].firstAt).toBe(at(2026, 5, 21, 22, 0))
+  })
+
+  it('@晚上八点半', () => {
+    const r = parseReminderInline('测试 @晚上八点半', NOW)
+    expect(r.reminders[0].firstAt).toBe(at(2026, 5, 21, 20, 30))
+  })
+
+  it('@三点 (无 period → 3 AM，过 → tomorrow)', () => {
+    const r = parseReminderInline('测试 @三点', NOW)
+    expect(r.reminders[0].firstAt).toBe(at(2026, 5, 22, 3, 0))
+  })
+
+  it('@十二点 (no period, 12 PM today)', () => {
+    const r = parseReminderInline('测试 @十二点', NOW)
+    expect(r.reminders[0].firstAt).toBe(at(2026, 5, 21, 12, 0))
+  })
+
+  it('@二十三点四十五 (compound chinese hours+minutes)', () => {
+    const r = parseReminderInline('测试 @二十三点四十五', NOW)
+    expect(r.reminders[0].firstAt).toBe(at(2026, 5, 21, 23, 45))
+  })
+
+  it('@下午三点钟 (钟 suffix ignored)', () => {
+    const r = parseReminderInline('测试 @下午三点钟', NOW)
+    expect(r.reminders[0].firstAt).toBe(at(2026, 5, 21, 15, 0))
+  })
+
+  it('@下午三点整 (整 suffix ignored)', () => {
+    const r = parseReminderInline('测试 @下午三点整', NOW)
+    expect(r.reminders[0].firstAt).toBe(at(2026, 5, 21, 15, 0))
+  })
+})
